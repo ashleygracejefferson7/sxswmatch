@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
+// Your Google Apps Script Web App URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbyQWAqnnYALWF4tBBqwj69Na1BbWDHqPLpt0ge_NCHDgxeLuq14_qXrOp_HxK4Z77dU/exec';
+
 const RetentionMessage = () => (
   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded">
     <p className="text-sm text-yellow-800">
@@ -30,14 +33,26 @@ const NetworkingMatcher = () => {
   });
   const [submissions, setSubmissions] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Simulating loading saved data
+  // Load data from Google Sheets API
   useEffect(() => {
-    // In a real app, this would load from a database
-    const savedData = localStorage.getItem('networkingData');
-    if (savedData) {
-      setSubmissions(JSON.parse(savedData));
-    }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(API_URL);
+        const data = await response.json();
+        setSubmissions(data);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError('Could not load existing data. Please try again later.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleChange = (e) => {
@@ -47,32 +62,70 @@ const NetworkingMatcher = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Add submission to the list
-    const newSubmissions = [...submissions, formData];
-    setSubmissions(newSubmissions);
-    
-    // Save to localStorage (in a real app, save to database)
-    localStorage.setItem('networkingData', JSON.stringify(newSubmissions));
-    
-    // Find matches
-    findMatches(formData, newSubmissions);
-    
-    // Show thank you screen
-    setView('thanks');
-    
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      linkedin: '',
-      askCategory: '',
-      asking: '',
-      giveCategory: '',
-      giving: '',
-    });
+    try {
+      setLoading(true);
+      
+      // Send data to Google Sheets
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          linkedin: formData.linkedin,
+          askCategory: formData.askCategory,
+          asking: formData.asking,
+          giveCategory: formData.giveCategory,
+          giving: formData.giving
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Add submission to local state for immediate UI update
+        const newSubmission = {
+          Name: formData.name,
+          Email: formData.email,
+          LinkedIn: formData.linkedin,
+          AskCategory: formData.askCategory,
+          AskingDetails: formData.asking,
+          GiveCategory: formData.giveCategory,
+          GivingDetails: formData.giving,
+          Timestamp: new Date().toString()
+        };
+        
+        const newSubmissions = [...submissions, newSubmission];
+        setSubmissions(newSubmissions);
+        
+        // Find matches
+        findMatches(newSubmission, newSubmissions);
+        
+        // Show thank you screen
+        setView('thanks');
+        
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          linkedin: '',
+          askCategory: '',
+          asking: '',
+          giveCategory: '',
+          giving: '',
+        });
+      } else {
+        setError("Error saving your information. Please try again.");
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error submitting form:', err);
+      setError("Error connecting to the server. Please try again later.");
+      setLoading(false);
+    }
   };
 
   const findMatches = (currentUser, allUsers) => {
@@ -88,38 +141,38 @@ const NetworkingMatcher = () => {
         .filter(word => word.length > 2 && !commonWords.includes(word));
     };
     
-    const userAskingKeywords = extractKeywords(currentUser.asking);
-    const userGivingKeywords = extractKeywords(currentUser.giving);
+    const userAskingKeywords = extractKeywords(currentUser.AskingDetails);
+    const userGivingKeywords = extractKeywords(currentUser.GivingDetails);
     
     const potentialMatches = allUsers.filter(user => {
-      if (user.email === currentUser.email) return false;
+      if (user.Email === currentUser.Email) return false;
       
       // Score each potential match
       let matchScore = 0;
       
       // Category matches (direct category matches are strong signals)
-      if (currentUser.askCategory && user.giveCategory === currentUser.askCategory) {
+      if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
         matchScore += 3;
       }
       
-      if (currentUser.giveCategory && user.askCategory === currentUser.giveCategory) {
+      if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
         matchScore += 3;
       }
       
       // Keyword matches
-      const theirAskingKeywords = extractKeywords(user.asking);
-      const theirGivingKeywords = extractKeywords(user.giving);
+      const theirAskingKeywords = extractKeywords(user.AskingDetails);
+      const theirGivingKeywords = extractKeywords(user.GivingDetails);
       
       // What I'm giving matches what they're asking
       userGivingKeywords.forEach(keyword => {
-        if (theirAskingKeywords.includes(keyword) || user.asking.toLowerCase().includes(keyword)) {
+        if (theirAskingKeywords.includes(keyword) || user.AskingDetails.toLowerCase().includes(keyword)) {
           matchScore += 1;
         }
       });
       
       // What I'm asking matches what they're giving
       userAskingKeywords.forEach(keyword => {
-        if (theirGivingKeywords.includes(keyword) || user.giving.toLowerCase().includes(keyword)) {
+        if (theirGivingKeywords.includes(keyword) || user.GivingDetails.toLowerCase().includes(keyword)) {
           matchScore += 1;
         }
       });
@@ -133,19 +186,19 @@ const NetworkingMatcher = () => {
       let score = 0;
       
       // Recalculate score for sorting
-      if (currentUser.askCategory && user.giveCategory === currentUser.askCategory) score += 3;
-      if (currentUser.giveCategory && user.askCategory === currentUser.giveCategory) score += 3;
+      if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) score += 3;
+      if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) score += 3;
       
-      const keywords1 = extractKeywords(currentUser.giving);
-      const keywords2 = extractKeywords(user.asking);
+      const keywords1 = extractKeywords(currentUser.GivingDetails);
+      const keywords2 = extractKeywords(user.AskingDetails);
       keywords1.forEach(k => {
-        if (keywords2.includes(k) || user.asking.toLowerCase().includes(k)) score += 1;
+        if (keywords2.includes(k) || user.AskingDetails.toLowerCase().includes(k)) score += 1;
       });
       
-      const keywords3 = extractKeywords(currentUser.asking);
-      const keywords4 = extractKeywords(user.giving);
+      const keywords3 = extractKeywords(currentUser.AskingDetails);
+      const keywords4 = extractKeywords(user.GivingDetails);
       keywords3.forEach(k => {
-        if (keywords4.includes(k) || user.giving.toLowerCase().includes(k)) score += 1;
+        if (keywords4.includes(k) || user.GivingDetails.toLowerCase().includes(k)) score += 1;
       });
       
       return { ...user, matchScore: score };
@@ -154,22 +207,62 @@ const NetworkingMatcher = () => {
     setMatches(scoredMatches);
   };
 
-  const checkMatches = () => {
-    // Find matches for the email entered
-    const userSubmission = submissions.find(
-      sub => sub.email === formData.email
-    );
+  const checkMatches = async () => {
+    if (!formData.email) {
+      alert("Please enter your email address to check matches");
+      return;
+    }
     
-    if (userSubmission) {
-      findMatches(userSubmission, submissions);
-      setView('matches');
-    } else {
-      alert("Email not found. Please submit the form first.");
+    try {
+      setLoading(true);
+      
+      // Refresh data to get latest matches
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setSubmissions(data);
+      
+      // Find matches for the email entered
+      const userSubmission = data.find(
+        sub => sub.Email.toLowerCase() === formData.email.toLowerCase()
+      );
+      
+      if (userSubmission) {
+        findMatches(userSubmission, data);
+        setView('matches');
+      } else {
+        alert("Email not found. Please submit the form first.");
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error checking matches:', err);
+      setError("Error connecting to the server. Please try again later.");
+      setLoading(false);
     }
   };
 
   return (
     <div className="p-6 max-w-md mx-auto bg-white rounded-xl shadow-md" style={{backgroundColor: theme.background, color: theme.text}}>
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg shadow-lg">
+            <p className="text-center">Loading...</p>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded">
+          <p>{error}</p>
+          <button 
+            className="text-sm underline mt-1"
+            onClick={() => setError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      
       {view === 'form' && (
         <>
           <div className="mb-8 text-center">
@@ -350,10 +443,11 @@ const NetworkingMatcher = () => {
             
             <button
               type="submit"
+              disabled={loading}
               className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
-              style={{backgroundColor: theme.primary}}
+              style={{backgroundColor: theme.primary, opacity: loading ? 0.7 : 1}}
             >
-              Submit
+              {loading ? 'Submitting...' : 'Submit'}
             </button>
           </form>
           
@@ -365,16 +459,18 @@ const NetworkingMatcher = () => {
               <input
                 type="email"
                 name="email"
+                value={formData.email}
                 onChange={handleChange}
                 placeholder="Enter your email"
                 className="flex-1 rounded-md border-gray-300 shadow-sm p-2 border"
               />
               <button
                 onClick={checkMatches}
+                disabled={loading}
                 className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
-                style={{backgroundColor: theme.secondary}}
+                style={{backgroundColor: theme.secondary, opacity: loading ? 0.7 : 1}}
               >
-                Check
+                {loading ? '...' : 'Check'}
               </button>
             </div>
           </div>
@@ -421,11 +517,11 @@ const NetworkingMatcher = () => {
                 <div key={index} className="border rounded-md p-4 bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold">{match.name}</h3>
-                      <p className="text-sm text-gray-500">{match.email}</p>
-                      {match.linkedin && (
+                      <h3 className="font-bold">{match.Name}</h3>
+                      <p className="text-sm text-gray-500">{match.Email}</p>
+                      {match.LinkedIn && (
                         <a 
-                          href={match.linkedin} 
+                          href={match.LinkedIn} 
                           target="_blank" 
                           rel="noopener noreferrer" 
                           className="text-sm text-blue-600 hover:underline flex items-center mt-1"
@@ -444,13 +540,13 @@ const NetworkingMatcher = () => {
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div className="bg-red-50 p-2 rounded">
                       <p className="text-xs uppercase font-semibold text-red-700">Asking for</p>
-                      <p className="text-sm font-medium">{match.askCategory}</p>
-                      <p className="text-sm mt-1">{match.asking}</p>
+                      <p className="text-sm font-medium">{match.AskCategory}</p>
+                      <p className="text-sm mt-1">{match.AskingDetails}</p>
                     </div>
                     <div className="bg-green-50 p-2 rounded">
                       <p className="text-xs uppercase font-semibold text-green-700">Offering</p>
-                      <p className="text-sm font-medium">{match.giveCategory}</p>
-                      <p className="text-sm mt-1">{match.giving}</p>
+                      <p className="text-sm font-medium">{match.GiveCategory}</p>
+                      <p className="text-sm mt-1">{match.GivingDetails}</p>
                     </div>
                   </div>
                 </div>
