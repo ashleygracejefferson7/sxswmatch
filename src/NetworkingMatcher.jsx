@@ -21,7 +21,6 @@ const NetworkingMatcher = () => {
     text: '#484848',
   };
 
-  const [view, setView] = useState('form'); // 'form', 'thanks', 'matches'
   const [userSubmissionInfo, setUserSubmissionInfo] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -36,7 +35,8 @@ const NetworkingMatcher = () => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [matchFeedback, setMatchFeedback] = useState({});
+  const [feedbackData, setFeedbackData] = useState({});
+  const [view, setView] = useState('form'); // 'form', 'thanks', 'matches'
 
   // Load data from Google Sheets API and feedback data
   useEffect(() => {
@@ -46,12 +46,12 @@ const NetworkingMatcher = () => {
         const response = await fetch(API_URL);
         const data = await response.json();
         
-        // The API now returns both records and feedback
+        // The API returns both records and feedback
         setSubmissions(data.records || data);
         
         // Set feedback if available
         if (data.feedback) {
-          setMatchFeedback(data.feedback);
+          setFeedbackData(data.feedback);
         }
         
         setLoading(false);
@@ -69,7 +69,7 @@ const NetworkingMatcher = () => {
   const handleMatchFeedback = async (matchEmail, feedbackType) => {
     // Get current user email
     const currentUserEmail = formData.email || 
-      (matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.email : '');
+      (userSubmissionInfo ? userSubmissionInfo.email : '');
       
     if (!currentUserEmail) {
       alert("Please enter your email to provide feedback");
@@ -96,10 +96,10 @@ const NetworkingMatcher = () => {
         // Update local state
         const feedbackKey = `${currentUserEmail}-${matchEmail}`;
         const newFeedback = {
-          ...matchFeedback,
+          ...feedbackData,
           [feedbackKey]: feedbackType
         };
-        setMatchFeedback(newFeedback);
+        setFeedbackData(newFeedback);
         
         // Show acknowledgment
         alert(`Thank you for your feedback! This will improve future matches.`);
@@ -171,6 +171,15 @@ const NetworkingMatcher = () => {
         const newSubmissions = [...submissions, newSubmission];
         setSubmissions(newSubmissions);
         
+        // Store user's submission info
+        setUserSubmissionInfo({
+          askCategory: formData.askCategory,
+          asking: formData.asking,
+          giveCategory: formData.giveCategory,
+          giving: formData.giving,
+          email: formData.email
+        });
+        
         // Find matches
         findMatches(newSubmission, newSubmissions);
         
@@ -236,18 +245,6 @@ const NetworkingMatcher = () => {
     const SPECIFIC_KEYWORD_BONUS = 0.5;       // Bonus for longer/more specific keywords
     const MINIMUM_MATCH_THRESHOLD = 3;        // Minimum score to be considered a match
     const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
-    
-    // Use feedback data from server instead of localStorage
-    const userFeedback = matchFeedback || {};
-    
-    // Extract current user's submission information to display in matches view
-    const currentUserInfo = {
-      askCategory: currentUser.AskCategory,
-      asking: currentUser.AskingDetails,
-      giveCategory: currentUser.GiveCategory,
-      giving: currentUser.GivingDetails,
-      email: currentUser.Email
-    };
     
     // Process all potential matches
     const scoredMatches = allUsers
@@ -332,10 +329,10 @@ const NetworkingMatcher = () => {
         // Calculate total match score
         const totalMatchScore = askingMatchScore + givingMatchScore;
         
-        // Check for user feedback on this match
+        // Check for user feedback on this match from Google Sheets
         const feedbackKey = `${currentUser.Email}-${user.Email}`;
-        const hasPositiveFeedback = userFeedback[feedbackKey] === 'relevant';
-        const hasNegativeFeedback = userFeedback[feedbackKey] === 'irrelevant';
+        const hasPositiveFeedback = feedbackData[feedbackKey] === 'relevant';
+        const hasNegativeFeedback = feedbackData[feedbackKey] === 'irrelevant';
         
         // Apply feedback adjustments
         let adjustedScore = totalMatchScore;
@@ -360,7 +357,6 @@ const NetworkingMatcher = () => {
             theyAskWhatIOffer,
             theyOfferWhatIAsk
           },
-          currentUserInfo, // Add current user's info to every match
           hasFeedback: hasPositiveFeedback || hasNegativeFeedback
         };
       })
@@ -370,8 +366,6 @@ const NetworkingMatcher = () => {
       .sort((a, b) => b.matchScore - a.matchScore);
     
     setMatches(scoredMatches);
-    
-    // Return the matches array for use in checkMatches
     return scoredMatches;
   };
 
@@ -391,7 +385,7 @@ const NetworkingMatcher = () => {
       // Set submissions and feedback from the response
       setSubmissions(data.records || data);
       if (data.feedback) {
-        setMatchFeedback(data.feedback);
+        setFeedbackData(data.feedback);
       }
       
       // Find matches for the email entered
