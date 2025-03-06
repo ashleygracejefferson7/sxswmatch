@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Your Google Apps Script Web App URL
-const API_URL = 'https://script.google.com/macros/s/AKfycbw0Er7Ub0xnTMzHHsWuqQkghYAlvgrfmZLaOb2WDcv1r_P2l00Z9TJyBwf1aEP8yfkg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx2h4B6jNF3tQtH82Rmc-IM6vQonSw_SJc0KXjw9Tpj_YQ_rVKAT93PgBL28UMGo5Ad/exec';
 
 const RetentionMessage = () => (
   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded">
@@ -12,6 +12,110 @@ const RetentionMessage = () => (
   </div>
 );
 
+const AskSection = ({ index, data, onChange, onRemove, categories, isRequired }) => {
+  return (
+    <div className={`${index > 0 ? 'mt-5' : ''} ${index < 2 ? 'pb-5 border-b' : ''}`}>
+      <div className="flex justify-between items-center">
+        <h3 className="text-md font-medium">
+          Ask #{index + 1} {isRequired && <span className="text-red-500">*</span>}
+        </h3>
+        {!isRequired && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-xs text-gray-500 hover:text-red-500"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      
+      <div className="mt-3 space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Category</label>
+          <select
+            name={`category`}
+            value={data.category}
+            onChange={(e) => onChange({ ...data, category: e.target.value })}
+            required={isRequired}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+          >
+            <option value="">Select a category</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Details</label>
+          <textarea
+            name={`details`}
+            value={data.details}
+            onChange={(e) => onChange({ ...data, details: e.target.value })}
+            required={isRequired}
+            placeholder="Describe specifically what you're looking for..."
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+            rows="2"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OfferSection = ({ index, data, onChange, onRemove, categories, isRequired }) => {
+  return (
+    <div className={`${index > 0 ? 'mt-5' : ''} ${index < 2 ? 'pb-5 border-b' : ''}`}>
+      <div className="flex justify-between items-center">
+        <h3 className="text-md font-medium">
+          Offer #{index + 1} {isRequired && <span className="text-red-500">*</span>}
+        </h3>
+        {!isRequired && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-xs text-gray-500 hover:text-red-500"
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      
+      <div className="mt-3 space-y-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Category</label>
+          <select
+            name={`category`}
+            value={data.category}
+            onChange={(e) => onChange({ ...data, category: e.target.value })}
+            required={isRequired}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+          >
+            <option value="">Select a category</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Details</label>
+          <textarea
+            name={`details`}
+            value={data.details}
+            onChange={(e) => onChange({ ...data, details: e.target.value })}
+            required={isRequired}
+            placeholder="Describe specifically what you can offer..."
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+            rows="2"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const NetworkingMatcher = () => {
   // Custom event theme colors
   const theme = {
@@ -21,15 +125,60 @@ const NetworkingMatcher = () => {
     text: '#484848',
   };
 
+  // Categories for dropdowns
+  const categories = [
+    "Mentorship",
+    "Business Development",
+    "Investment",
+    "Funding",
+    "VC Connections",
+    "Angel Investors",
+    "Technical Skills",
+    "Software Development",
+    "Data Science",
+    "UI/UX",
+    "Marketing",
+    "Growth Hacking",
+    "Content Strategy",
+    "Social Media",
+    "SEO",
+    "Design",
+    "Graphic Design",
+    "Product Design",
+    "Legal Advice",
+    "IP Protection",
+    "Contract Review",
+    "Partnerships",
+    "Co-Founder",
+    "Career Advice",
+    "Job Opportunities",
+    "Resume Review",
+    "Interview Prep",
+    "Industry Connections",
+    "Speaking Opportunities",
+    "Media Exposure",
+    "Podcast Guest",
+    "Customer Introductions",
+    "User Testing",
+    "Product Feedback",
+    "Operations",
+    "HR/Recruiting",
+    "Finance",
+    "Sales Strategy",
+    "Other"
+  ];
+
   const [userSubmissionInfo, setUserSubmissionInfo] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     linkedin: '',
-    askCategory: '',
-    asking: '',
-    giveCategory: '',
-    giving: '',
+    asks: [
+      { category: '', details: '' }
+    ],
+    offers: [
+      { category: '', details: '' }
+    ]
   });
   const [submissions, setSubmissions] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -64,6 +213,72 @@ const NetworkingMatcher = () => {
 
     fetchData();
   }, []);
+  
+  // Handle basic form input changes
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  // Handle ask update
+  const handleAskChange = (index, updatedAsk) => {
+    const newAsks = [...formData.asks];
+    newAsks[index] = updatedAsk;
+    setFormData({
+      ...formData,
+      asks: newAsks
+    });
+  };
+
+  // Handle offer update
+  const handleOfferChange = (index, updatedOffer) => {
+    const newOffers = [...formData.offers];
+    newOffers[index] = updatedOffer;
+    setFormData({
+      ...formData,
+      offers: newOffers
+    });
+  };
+
+  // Add a new ask
+  const addAsk = () => {
+    if (formData.asks.length < 3) {
+      setFormData({
+        ...formData,
+        asks: [...formData.asks, { category: '', details: '' }]
+      });
+    }
+  };
+
+  // Add a new offer
+  const addOffer = () => {
+    if (formData.offers.length < 3) {
+      setFormData({
+        ...formData,
+        offers: [...formData.offers, { category: '', details: '' }]
+      });
+    }
+  };
+
+  // Remove an ask
+  const removeAsk = (index) => {
+    const newAsks = formData.asks.filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      asks: newAsks
+    });
+  };
+
+  // Remove an offer
+  const removeOffer = (index) => {
+    const newOffers = formData.offers.filter((_, i) => i !== index);
+    setFormData({
+      ...formData,
+      offers: newOffers
+    });
+  };
   
   // Handle match feedback (relevant/irrelevant)
   const handleMatchFeedback = async (matchEmail, feedbackType) => {
@@ -126,18 +341,19 @@ const NetworkingMatcher = () => {
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
       setLoading(true);
+      
+      // Validate that required fields are filled
+      if (!formData.asks[0].category || !formData.asks[0].details ||
+          !formData.offers[0].category || !formData.offers[0].details) {
+        alert("Please fill in all required fields.");
+        setLoading(false);
+        return;
+      }
       
       // Send data to Google Sheets
       const response = await fetch(API_URL, {
@@ -146,10 +362,8 @@ const NetworkingMatcher = () => {
           name: formData.name,
           email: formData.email,
           linkedin: formData.linkedin,
-          askCategory: formData.askCategory,
-          asking: formData.asking,
-          giveCategory: formData.giveCategory,
-          giving: formData.giving
+          asks: formData.asks,
+          offers: formData.offers
         })
       });
       
@@ -161,10 +375,8 @@ const NetworkingMatcher = () => {
           Name: formData.name,
           Email: formData.email,
           LinkedIn: formData.linkedin,
-          AskCategory: formData.askCategory,
-          AskingDetails: formData.asking,
-          GiveCategory: formData.giveCategory,
-          GivingDetails: formData.giving,
+          asks: formData.asks,
+          offers: formData.offers,
           Timestamp: new Date().toString()
         };
         
@@ -173,11 +385,10 @@ const NetworkingMatcher = () => {
         
         // Store user's submission info
         setUserSubmissionInfo({
-          askCategory: formData.askCategory,
-          asking: formData.asking,
-          giveCategory: formData.giveCategory,
-          giving: formData.giving,
-          email: formData.email
+          name: formData.name,
+          email: formData.email,
+          asks: formData.asks,
+          offers: formData.offers
         });
         
         // Find matches
@@ -191,10 +402,8 @@ const NetworkingMatcher = () => {
           name: '',
           email: '',
           linkedin: '',
-          askCategory: '',
-          asking: '',
-          giveCategory: '',
-          giving: '',
+          asks: [{ category: '', details: '' }],
+          offers: [{ category: '', details: '' }]
         });
       } else {
         setError("Error saving your information. Please try again.");
@@ -209,8 +418,6 @@ const NetworkingMatcher = () => {
   };
 
   const findMatches = (currentUser, allUsers) => {
-    // More sophisticated matching algorithm with weighted scoring and better keyword extraction
-    
     // Enhanced keyword extraction with better stopwords list
     const extractKeywords = (text) => {
       if (!text) return [];
@@ -235,10 +442,6 @@ const NetworkingMatcher = () => {
         .filter(word => word.length > 3 && !stopwords.includes(word));
     };
     
-    // Get keywords from current user's asking and giving
-    const userAskingKeywords = extractKeywords(currentUser.AskingDetails);
-    const userGivingKeywords = extractKeywords(currentUser.GivingDetails);
-    
     // Define match thresholds - these can be adjusted based on testing
     const CATEGORY_MATCH_WEIGHT = 5;          // Weight for exact category match
     const KEYWORD_MATCH_WEIGHT = 1;           // Base weight for keyword match
@@ -247,87 +450,135 @@ const NetworkingMatcher = () => {
     const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
     
     // Process all potential matches
-    const scoredMatches = allUsers
+    const potentialMatches = allUsers
       .filter(user => user.Email !== currentUser.Email) // Exclude self
       .map(user => {
-        // Initialize match data
-        let askingMatchScore = 0;
-        let givingMatchScore = 0;
-        let theyAskWhatIOffer = false;
-        let theyOfferWhatIAsk = false;
+        // Array to store detailed match information
+        const askMatches = [];
+        const offerMatches = [];
+        let totalMatchScore = 0;
         
-        // Check for exact category matches (high weight)
-        if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
-          theyOfferWhatIAsk = true;
-          askingMatchScore += CATEGORY_MATCH_WEIGHT;
-        }
-        
-        if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
-          theyAskWhatIOffer = true;
-          givingMatchScore += CATEGORY_MATCH_WEIGHT;
-        }
-        
-        // Extract keywords from their asking and giving
-        const theirAskingKeywords = extractKeywords(user.AskingDetails);
-        const theirGivingKeywords = extractKeywords(user.GivingDetails);
-        
-        // Create sets of matched keywords for explanation
-        const matchedGivingKeywords = new Set();
-        const matchedAskingKeywords = new Set();
-        
-        // Check if what I'm giving matches what they're asking for
-        userGivingKeywords.forEach(myKeyword => {
-          const matches = theirAskingKeywords.filter(theirKeyword => 
-            theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
-          );
+        // Check each of the user's asks against the other user's offers
+        currentUser.asks.forEach((userAsk, userAskIndex) => {
+          // Skip empty asks
+          if (!userAsk || !userAsk.category || !userAsk.details) return;
           
-          if (matches.length > 0) {
-            // Add base score for the match
-            givingMatchScore += KEYWORD_MATCH_WEIGHT;
+          const userAskKeywords = extractKeywords(userAsk.details);
+          
+          // Check against each of their offers
+          user.offers.forEach((theirOffer, theirOfferIndex) => {
+            // Skip empty offers
+            if (!theirOffer || !theirOffer.category || !theirOffer.details) return;
             
-            // Add bonus for longer, more specific keywords
-            if (myKeyword.length > 6) {
-              givingMatchScore += SPECIFIC_KEYWORD_BONUS;
+            let matchScore = 0;
+            const matchedTerms = new Set();
+            
+            // Category match (high weight)
+            if (userAsk.category === theirOffer.category) {
+              matchScore += CATEGORY_MATCH_WEIGHT;
             }
             
-            // Track matched keywords for explanation
-            matchedGivingKeywords.add(myKeyword);
-            matches.forEach(match => matchedGivingKeywords.add(match));
-          }
+            // Keyword matches
+            const theirOfferKeywords = extractKeywords(theirOffer.details);
+            
+            userAskKeywords.forEach(myKeyword => {
+              const matches = theirOfferKeywords.filter(theirKeyword => 
+                theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
+              );
+              
+              if (matches.length > 0) {
+                // Add base score for the match
+                matchScore += KEYWORD_MATCH_WEIGHT;
+                
+                // Add bonus for longer, more specific keywords
+                if (myKeyword.length > 6) {
+                  matchScore += SPECIFIC_KEYWORD_BONUS;
+                }
+                
+                // Track matched keywords
+                matchedTerms.add(myKeyword);
+                matches.forEach(match => matchedTerms.add(match));
+              }
+            });
+            
+            // If the match score is high enough, record this match
+            if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
+              askMatches.push({
+                userAskIndex,
+                theirOfferIndex,
+                userAskCategory: userAsk.category,
+                userAskDetails: userAsk.details,
+                theirOfferCategory: theirOffer.category,
+                theirOfferDetails: theirOffer.details,
+                matchScore,
+                matchedTerms: Array.from(matchedTerms)
+              });
+              
+              totalMatchScore += matchScore;
+            }
+          });
         });
         
-        // Check if what I'm asking for matches what they're giving
-        userAskingKeywords.forEach(myKeyword => {
-          const matches = theirGivingKeywords.filter(theirKeyword => 
-            theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
-          );
+        // Check each of the user's offers against the other user's asks
+        currentUser.offers.forEach((userOffer, userOfferIndex) => {
+          // Skip empty offers
+          if (!userOffer || !userOffer.category || !userOffer.details) return;
           
-          if (matches.length > 0) {
-            // Add base score for the match
-            askingMatchScore += KEYWORD_MATCH_WEIGHT;
+          const userOfferKeywords = extractKeywords(userOffer.details);
+          
+          // Check against each of their asks
+          user.asks.forEach((theirAsk, theirAskIndex) => {
+            // Skip empty asks
+            if (!theirAsk || !theirAsk.category || !theirAsk.details) return;
             
-            // Add bonus for longer, more specific keywords
-            if (myKeyword.length > 6) {
-              askingMatchScore += SPECIFIC_KEYWORD_BONUS;
+            let matchScore = 0;
+            const matchedTerms = new Set();
+            
+            // Category match (high weight)
+            if (userOffer.category === theirAsk.category) {
+              matchScore += CATEGORY_MATCH_WEIGHT;
             }
             
-            // Track matched keywords for explanation
-            matchedAskingKeywords.add(myKeyword);
-            matches.forEach(match => matchedAskingKeywords.add(match));
-          }
+            // Keyword matches
+            const theirAskKeywords = extractKeywords(theirAsk.details);
+            
+            userOfferKeywords.forEach(myKeyword => {
+              const matches = theirAskKeywords.filter(theirKeyword => 
+                theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
+              );
+              
+              if (matches.length > 0) {
+                // Add base score for the match
+                matchScore += KEYWORD_MATCH_WEIGHT;
+                
+                // Add bonus for longer, more specific keywords
+                if (myKeyword.length > 6) {
+                  matchScore += SPECIFIC_KEYWORD_BONUS;
+                }
+                
+                // Track matched keywords
+                matchedTerms.add(myKeyword);
+                matches.forEach(match => matchedTerms.add(match));
+              }
+            });
+            
+            // If the match score is high enough, record this match
+            if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
+              offerMatches.push({
+                userOfferIndex,
+                theirAskIndex,
+                userOfferCategory: userOffer.category,
+                userOfferDetails: userOffer.details,
+                theirAskCategory: theirAsk.category,
+                theirAskDetails: theirAsk.details,
+                matchScore,
+                matchedTerms: Array.from(matchedTerms)
+              });
+              
+              totalMatchScore += matchScore;
+            }
+          });
         });
-        
-        // Apply match thresholds
-        if (givingMatchScore >= MINIMUM_MATCH_THRESHOLD) {
-          theyAskWhatIOffer = true;
-        }
-        
-        if (askingMatchScore >= MINIMUM_MATCH_THRESHOLD) {
-          theyOfferWhatIAsk = true;
-        }
-        
-        // Calculate total match score
-        const totalMatchScore = askingMatchScore + givingMatchScore;
         
         // Check for user feedback on this match from Google Sheets
         const feedbackKey = `${currentUser.Email}-${user.Email}`;
@@ -342,31 +593,23 @@ const NetworkingMatcher = () => {
           adjustedScore -= 5; // Significantly reduce score for negative feedback
         }
         
-        // Return enhanced match data
-        return { 
-          ...user, 
+        // Return match information
+        return {
+          ...user,
           matchScore: adjustedScore,
-          askingMatchScore,
-          givingMatchScore,
           matchQuality: adjustedScore >= TWO_WAY_MATCH_THRESHOLD ? 'strong' : 'moderate',
-          matchExplanation: {
-            askingMatches: Array.from(matchedAskingKeywords),
-            givingMatches: Array.from(matchedGivingKeywords)
-          },
-          matchTypes: {
-            theyAskWhatIOffer,
-            theyOfferWhatIAsk
-          },
+          askMatches,
+          offerMatches,
           hasFeedback: hasPositiveFeedback || hasNegativeFeedback
         };
       })
-      // Filter out low-scoring matches
-      .filter(match => (match.matchScore >= MINIMUM_MATCH_THRESHOLD) || match.hasFeedback)
+      // Filter out entries with no matches
+      .filter(match => (match.askMatches.length > 0 || match.offerMatches.length > 0 || match.hasFeedback))
       // Sort by score (highest first)
       .sort((a, b) => b.matchScore - a.matchScore);
     
-    setMatches(scoredMatches);
-    return scoredMatches;
+    setMatches(potentialMatches);
+    return potentialMatches;
   };
 
   const checkMatches = async () => {
@@ -394,17 +637,13 @@ const NetworkingMatcher = () => {
       );
       
       if (userSubmission) {
-        // Create user info object for display
-        const userInfo = {
-          askCategory: userSubmission.AskCategory,
-          asking: userSubmission.AskingDetails,
-          giveCategory: userSubmission.GiveCategory,
-          giving: userSubmission.GivingDetails,
-          email: userSubmission.Email
-        };
-        
         // Store the user's submission info
-        setUserSubmissionInfo(userInfo);
+        setUserSubmissionInfo({
+          name: userSubmission.Name,
+          email: userSubmission.Email,
+          asks: userSubmission.asks || [],
+          offers: userSubmission.offers || []
+        });
         
         // Find actual matches
         const actualMatches = findMatches(userSubmission, data.records || data);
@@ -424,7 +663,7 @@ const NetworkingMatcher = () => {
   };
 
   return (
-    <div className="p-6 max-w-md mx-auto bg-white rounded-xl shadow-md" style={{backgroundColor: theme.background, color: theme.text}}>
+    <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md" style={{backgroundColor: theme.background, color: theme.text}}>
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded-lg shadow-lg">
@@ -454,208 +693,152 @@ const NetworkingMatcher = () => {
               <text x="50%" y="70%" dominantBaseline="middle" textAnchor="middle" style={{fontSize: '200px', fontFamily: 'Arial Black, sans-serif', fontWeight: 'bold'}}>2025</text>
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-4">[SXSW] Not-Your-Regular-Meetup : Build Your Village Attendee Match</h1>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-              />
+          <h1 className="text-2xl font-bold mb-6 text-center">[SXSW] Not-Your-Regular-Meetup : Build Your Village Attendee Match</h1>
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Personal Information */}
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-semibold mb-4">Personal Information</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">LinkedIn Profile URL</label>
+                  <input
+                    type="url"
+                    name="linkedin"
+                    value={formData.linkedin}
+                    onChange={handleChange}
+                    placeholder="https://linkedin.com/in/yourprofile"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Optional, but recommended for easier connections</p>
+                </div>
+              </div>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-              />
+            {/* What You're Looking For */}
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-semibold mb-4 text-red-600">What You're Looking For <span className="text-gray-500 text-sm font-normal">(up to 3)</span></h2>
+              
+              {/* Render Ask sections */}
+              {formData.asks.map((ask, index) => (
+                <AskSection
+                  key={`ask-${index}`}
+                  index={index}
+                  data={ask}
+                  onChange={(updatedAsk) => handleAskChange(index, updatedAsk)}
+                  onRemove={() => removeAsk(index)}
+                  categories={categories}
+                  isRequired={index === 0}
+                />
+              ))}
+              
+              {/* Add Ask button */}
+              {formData.asks.length < 3 && (
+                <button
+                  type="button"
+                  onClick={addAsk}
+                  className="mt-4 flex items-center text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add Ask {formData.asks.length + 1} (Optional)
+                </button>
+              )}
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700">LinkedIn Profile URL</label>
-              <input
-                type="url"
-                name="linkedin"
-                value={formData.linkedin}
-                onChange={handleChange}
-                placeholder="https://linkedin.com/in/yourprofile"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-              />
-              <p className="text-xs text-gray-500 mt-1">Optional, but recommended for easier connections</p>
+            {/* What You Can Offer */}
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-semibold mb-4 text-green-600">What You Can Offer <span className="text-gray-500 text-sm font-normal">(up to 3)</span></h2>
+              
+              {/* Render Offer sections */}
+              {formData.offers.map((offer, index) => (
+                <OfferSection
+                  key={`offer-${index}`}
+                  index={index}
+                  data={offer}
+                  onChange={(updatedOffer) => handleOfferChange(index, updatedOffer)}
+                  onRemove={() => removeOffer(index)}
+                  categories={categories}
+                  isRequired={index === 0}
+                />
+              ))}
+              
+              {/* Add Offer button */}
+              {formData.offers.length < 3 && (
+                <button
+                  type="button"
+                  onClick={addOffer}
+                  className="mt-4 flex items-center text-sm text-blue-600 hover:text-blue-800"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add Offer {formData.offers.length + 1} (Optional)
+                </button>
+              )}
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700">What category are you asking for?</label>
-              <select
-                name="askCategory"
-                value={formData.askCategory}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-              >
-                <option value="">Select a category</option>
-                <option value="Mentorship">Mentorship</option>
-                <option value="Business Development">Business Development</option>
-                <option value="Investment">Investment</option>
-                <option value="Funding">Funding</option>
-                <option value="VC Connections">VC Connections</option>
-                <option value="Angel Investors">Angel Investors</option>
-                <option value="Technical Skills">Technical Skills</option>
-                <option value="Software Development">Software Development</option>
-                <option value="Data Science">Data Science</option>
-                <option value="UI/UX">UI/UX</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Growth Hacking">Growth Hacking</option>
-                <option value="Content Strategy">Content Strategy</option>
-                <option value="Social Media">Social Media</option>
-                <option value="SEO">SEO</option>
-                <option value="Design">Design</option>
-                <option value="Graphic Design">Graphic Design</option>
-                <option value="Product Design">Product Design</option>
-                <option value="Legal Advice">Legal Advice</option>
-                <option value="IP Protection">IP Protection</option>
-                <option value="Contract Review">Contract Review</option>
-                <option value="Partnerships">Partnerships</option>
-                <option value="Co-Founder">Co-Founder</option>
-                <option value="Career Advice">Career Advice</option>
-                <option value="Job Opportunities">Job Opportunities</option>
-                <option value="Resume Review">Resume Review</option>
-                <option value="Interview Prep">Interview Prep</option>
-                <option value="Industry Connections">Industry Connections</option>
-                <option value="Speaking Opportunities">Speaking Opportunities</option>
-                <option value="Media Exposure">Media Exposure</option>
-                <option value="Podcast Guest">Podcast Guest</option>
-                <option value="Customer Introductions">Customer Introductions</option>
-                <option value="User Testing">User Testing</option>
-                <option value="Product Feedback">Product Feedback</option>
-                <option value="Operations">Operations</option>
-                <option value="HR/Recruiting">HR/Recruiting</option>
-                <option value="Finance">Finance</option>
-                <option value="Sales Strategy">Sales Strategy</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">What are you asking for? (Be specific)</label>
-              <textarea
-                name="asking"
-                value={formData.asking}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                placeholder="Describe specifically what you're looking for..."
-                rows="3"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">What category can you offer?</label>
-              <select
-                name="giveCategory"
-                value={formData.giveCategory}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-              >
-                <option value="">Select a category</option>
-                <option value="Mentorship">Mentorship</option>
-                <option value="Business Development">Business Development</option>
-                <option value="Investment">Investment</option>
-                <option value="Funding">Funding</option>
-                <option value="VC Connections">VC Connections</option>
-                <option value="Angel Investors">Angel Investors</option>
-                <option value="Technical Skills">Technical Skills</option>
-                <option value="Software Development">Software Development</option>
-                <option value="Data Science">Data Science</option>
-                <option value="UI/UX">UI/UX</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Growth Hacking">Growth Hacking</option>
-                <option value="Content Strategy">Content Strategy</option>
-                <option value="Social Media">Social Media</option>
-                <option value="SEO">SEO</option>
-                <option value="Design">Design</option>
-                <option value="Graphic Design">Graphic Design</option>
-                <option value="Product Design">Product Design</option>
-                <option value="Legal Advice">Legal Advice</option>
-                <option value="IP Protection">IP Protection</option>
-                <option value="Contract Review">Contract Review</option>
-                <option value="Partnerships">Partnerships</option>
-                <option value="Co-Founder">Co-Founder</option>
-                <option value="Career Advice">Career Advice</option>
-                <option value="Job Opportunities">Job Opportunities</option>
-                <option value="Resume Review">Resume Review</option>
-                <option value="Interview Prep">Interview Prep</option>
-                <option value="Industry Connections">Industry Connections</option>
-                <option value="Speaking Opportunities">Speaking Opportunities</option>
-                <option value="Media Exposure">Media Exposure</option>
-                <option value="Podcast Guest">Podcast Guest</option>
-                <option value="Customer Introductions">Customer Introductions</option>
-                <option value="User Testing">User Testing</option>
-                <option value="Product Feedback">Product Feedback</option>
-                <option value="Operations">Operations</option>
-                <option value="HR/Recruiting">HR/Recruiting</option>
-                <option value="Finance">Finance</option>
-                <option value="Sales Strategy">Sales Strategy</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700">What can you offer? (Be specific)</label>
-              <textarea
-                name="giving"
-                value={formData.giving}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
-                placeholder="Describe specifically what you can offer..."
-                rows="3"
-              />
-            </div>
-            
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
+              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
               style={{backgroundColor: theme.primary, opacity: loading ? 0.7 : 1}}
             >
               {loading ? 'Submitting...' : 'Submit'}
             </button>
-          </form>
-          
-          <RetentionMessage />
-          
-          <div className="mt-6 pt-4 border-t">
-            <h2 className="text-lg font-medium mb-2 text-center">Already submitted? Check your matches!</h2>
-            <div className="flex space-x-2">
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Enter your email"
-                className="flex-1 rounded-md border-gray-300 shadow-sm p-2 border"
-              />
-              <button
-                onClick={checkMatches}
-                disabled={loading}
-                className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
-                style={{backgroundColor: theme.secondary, opacity: loading ? 0.7 : 1}}
-              >
-                {loading ? '...' : 'Check'}
-              </button>
+            
+            <RetentionMessage />
+            
+            {/* Check Matches */}
+            <div className="mt-6 pt-6 border-t">
+              <h2 className="text-lg font-medium mb-4 text-center">Already submitted? Check your matches!</h2>
+              <div className="flex space-x-2">
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your email"
+                  className="flex-1 rounded-md border-gray-300 shadow-sm p-2 border"
+                />
+                <button
+                  type="button"
+                  onClick={checkMatches}
+                  disabled={loading}
+                  className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
+                  style={{backgroundColor: theme.secondary, opacity: loading ? 0.7 : 1}}
+                >
+                  {loading ? '...' : 'Check'}
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
         </>
       )}
       
@@ -694,34 +877,43 @@ const NetworkingMatcher = () => {
           {/* User's own submission reminder */}
           {userSubmissionInfo && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h2 className="text-lg font-semibold mb-2 text-blue-800">Your Submission</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-blue-800">You're asking for:</p>
-                  <p className="text-sm font-bold">{userSubmissionInfo.askCategory}</p>
-                  <p className="text-sm">{userSubmissionInfo.asking}</p>
+              <h2 className="text-lg font-semibold mb-3 text-blue-800">Your Submission</h2>
+              
+              {userSubmissionInfo.asks && userSubmissionInfo.asks.length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-sm font-medium text-blue-700">What You're Looking For:</h3>
+                  <div className="mt-2 space-y-2">
+                    {userSubmissionInfo.asks.map((ask, index) => (
+                      <div key={`ask-${index}`} className="bg-white p-2 rounded border border-blue-100 text-sm">
+                        <span className="font-medium">{ask.category}:</span> {ask.details}
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              )}
+              
+              {userSubmissionInfo.offers && userSubmissionInfo.offers.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-blue-800">You're offering:</p>
-                  <p className="text-sm font-bold">{userSubmissionInfo.giveCategory}</p>
-                  <p className="text-sm">{userSubmissionInfo.giving}</p>
+                  <h3 className="text-sm font-medium text-blue-700">What You Can Offer:</h3>
+                  <div className="mt-2 space-y-2">
+                    {userSubmissionInfo.offers.map((offer, index) => (
+                      <div key={`offer-${index}`} className="bg-white p-2 rounded border border-blue-100 text-sm">
+                        <span className="font-medium">{offer.category}:</span> {offer.details}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
           
           {matches.length === 0 ? (
             <p>No matches found yet. Check back later!</p>
           ) : (
-            <div className="space-y-4">
-              {matches.map((match, index) => {
-                // Determine match types
-                const theyAskWhatIOffer = match.matchTypes && match.matchTypes.theyAskWhatIOffer;
-                const theyOfferWhatIAsk = match.matchTypes && match.matchTypes.theyOfferWhatIAsk;
-                const mutualMatch = theyAskWhatIOffer && theyOfferWhatIAsk;
-                
-                return (
+            <div className="space-y-5">
+              {matches.map((match, index) => (
                 <div key={index} className="border rounded-md p-4 bg-gray-50">
+                  {/* Match Header */}
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-bold">{match.Name}</h3>
@@ -745,38 +937,79 @@ const NetworkingMatcher = () => {
                         ? 'bg-blue-100 text-blue-800' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {mutualMatch ? "Two-way Match!" : "Match"} 
+                      {match.askMatches.length > 0 && match.offerMatches.length > 0 
+                        ? "Two-way Match!" 
+                        : "Match"} 
                       {match.matchQuality === 'strong' && " ★★★"}
                       {match.matchQuality === 'moderate' && " ★★"}
                     </div>
                   </div>
                   
-                  <div className="mt-3 grid grid-cols-1 gap-3">
-                    {(theyAskWhatIOffer || mutualMatch) && (
-                      <div className="bg-red-50 p-2 rounded">
-                        <p className="text-xs uppercase font-semibold text-red-700">They're Looking For</p>
-                        <p className="text-sm font-medium">{match.AskCategory}</p>
-                        <p className="text-sm mt-1">{match.AskingDetails}</p>
-                        <div className="text-xs text-green-600 mt-2 italic">
-                          <p>This matches what you can offer</p>
-                          {match.matchExplanation && match.matchExplanation.givingMatches.length > 0 && (
-                            <p className="mt-1">Matching terms: {match.matchExplanation.givingMatches.join(', ')}</p>
-                          )}
-                        </div>
+                  {/* Match Details */}
+                  <div className="mt-3 space-y-3">
+                    {/* Your Asks That Match Their Offers */}
+                    {match.askMatches.length > 0 && (
+                      <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                        <h4 className="text-sm font-semibold text-blue-800 mb-2">
+                          {match.askMatches.length > 1 
+                            ? `${match.askMatches.length} of Your Asks Matched Their Offers`
+                            : "Your Ask Matched Their Offer"}
+                        </h4>
+                        
+                        {match.askMatches.map((askMatch, idx) => (
+                          <div key={`ask-match-${idx}`} className={idx > 0 ? "mt-4 pt-4 border-t border-blue-100" : ""}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="bg-red-50 p-2 rounded">
+                                <p className="text-xs uppercase font-semibold text-red-700">You're Looking For</p>
+                                <p className="text-sm font-medium">{askMatch.userAskCategory}</p>
+                                <p className="text-sm mt-1">{askMatch.userAskDetails}</p>
+                              </div>
+                              <div className="bg-green-50 p-2 rounded">
+                                <p className="text-xs uppercase font-semibold text-green-700">They're Offering</p>
+                                <p className="text-sm font-medium">{askMatch.theirOfferCategory}</p>
+                                <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
+                              </div>
+                            </div>
+                            {askMatch.matchedTerms && askMatch.matchedTerms.length > 0 && (
+                              <div className="mt-2 text-xs text-blue-600 italic">
+                                <span className="font-medium">Matching terms:</span> {askMatch.matchedTerms.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                     
-                    {(theyOfferWhatIAsk || mutualMatch) && (
-                      <div className="bg-green-50 p-2 rounded">
-                        <p className="text-xs uppercase font-semibold text-green-700">They're Offering</p>
-                        <p className="text-sm font-medium">{match.GiveCategory}</p>
-                        <p className="text-sm mt-1">{match.GivingDetails}</p>
-                        <div className="text-xs text-red-600 mt-2 italic">
-                          <p>This matches what you're looking for</p>
-                          {match.matchExplanation && match.matchExplanation.askingMatches.length > 0 && (
-                            <p className="mt-1">Matching terms: {match.matchExplanation.askingMatches.join(', ')}</p>
-                          )}
-                        </div>
+                    {/* Your Offers That Match Their Asks */}
+                    {match.offerMatches.length > 0 && (
+                      <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                        <h4 className="text-sm font-semibold text-blue-800 mb-2">
+                          {match.offerMatches.length > 1 
+                            ? `${match.offerMatches.length} of Your Offers Matched Their Asks` 
+                            : "Your Offer Matched Their Ask"}
+                        </h4>
+                        
+                        {match.offerMatches.map((offerMatch, idx) => (
+                          <div key={`offer-match-${idx}`} className={idx > 0 ? "mt-4 pt-4 border-t border-blue-100" : ""}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="bg-green-50 p-2 rounded">
+                                <p className="text-xs uppercase font-semibold text-green-700">You're Offering</p>
+                                <p className="text-sm font-medium">{offerMatch.userOfferCategory}</p>
+                                <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
+                              </div>
+                              <div className="bg-red-50 p-2 rounded">
+                                <p className="text-xs uppercase font-semibold text-red-700">They're Looking For</p>
+                                <p className="text-sm font-medium">{offerMatch.theirAskCategory}</p>
+                                <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
+                              </div>
+                            </div>
+                            {offerMatch.matchedTerms && offerMatch.matchedTerms.length > 0 && (
+                              <div className="mt-2 text-xs text-blue-600 italic">
+                                <span className="font-medium">Matching terms:</span> {offerMatch.matchedTerms.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                     
@@ -798,7 +1031,7 @@ const NetworkingMatcher = () => {
                     </div>
                   </div>
                 </div>
-              )})}
+              ))}
             </div>
           )}
           
