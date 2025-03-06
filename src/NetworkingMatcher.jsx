@@ -149,14 +149,18 @@ const NetworkingMatcher = () => {
       
       // Score each potential match
       let matchScore = 0;
+      let theyAskWhatIOffer = false;
+      let theyOfferWhatIAsk = false;
       
       // Category matches (direct category matches are strong signals)
       if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
         matchScore += 3;
+        theyOfferWhatIAsk = true;
       }
       
       if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
         matchScore += 3;
+        theyAskWhatIOffer = true;
       }
       
       // Keyword matches
@@ -167,6 +171,7 @@ const NetworkingMatcher = () => {
       userGivingKeywords.forEach(keyword => {
         if (theirAskingKeywords.includes(keyword) || user.AskingDetails.toLowerCase().includes(keyword)) {
           matchScore += 1;
+          theyAskWhatIOffer = true;
         }
       });
       
@@ -174,6 +179,7 @@ const NetworkingMatcher = () => {
       userAskingKeywords.forEach(keyword => {
         if (theirGivingKeywords.includes(keyword) || user.GivingDetails.toLowerCase().includes(keyword)) {
           matchScore += 1;
+          theyOfferWhatIAsk = true;
         }
       });
       
@@ -181,27 +187,58 @@ const NetworkingMatcher = () => {
       return matchScore >= 1;
     });
     
+    // Extract current user's submission information to display in matches view
+    const currentUserInfo = {
+      askCategory: currentUser.AskCategory,
+      asking: currentUser.AskingDetails,
+      giveCategory: currentUser.GiveCategory,
+      giving: currentUser.GivingDetails
+    };
+    
     // Sort matches by score (most relevant first)
     const scoredMatches = potentialMatches.map(user => {
       let score = 0;
+      let theyAskWhatIOffer = false;
+      let theyOfferWhatIAsk = false;
       
       // Recalculate score for sorting
-      if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) score += 3;
-      if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) score += 3;
+      if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
+        score += 3;
+        theyOfferWhatIAsk = true;
+      }
+      
+      if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
+        score += 3;
+        theyAskWhatIOffer = true;
+      }
       
       const keywords1 = extractKeywords(currentUser.GivingDetails);
       const keywords2 = extractKeywords(user.AskingDetails);
       keywords1.forEach(k => {
-        if (keywords2.includes(k) || user.AskingDetails.toLowerCase().includes(k)) score += 1;
+        if (keywords2.includes(k) || user.AskingDetails.toLowerCase().includes(k)) {
+          score += 1;
+          theyAskWhatIOffer = true;
+        }
       });
       
       const keywords3 = extractKeywords(currentUser.AskingDetails);
       const keywords4 = extractKeywords(user.GivingDetails);
       keywords3.forEach(k => {
-        if (keywords4.includes(k) || user.GivingDetails.toLowerCase().includes(k)) score += 1;
+        if (keywords4.includes(k) || user.GivingDetails.toLowerCase().includes(k)) {
+          score += 1;
+          theyOfferWhatIAsk = true;
+        }
       });
       
-      return { ...user, matchScore: score };
+      return { 
+        ...user, 
+        matchScore: score,
+        matchTypes: {
+          theyAskWhatIOffer,
+          theyOfferWhatIAsk
+        },
+        currentUserInfo // Add current user's info to every match
+      };
     }).sort((a, b) => b.matchScore - a.matchScore);
     
     setMatches(scoredMatches);
@@ -509,11 +546,34 @@ const NetworkingMatcher = () => {
         <div>
           <h1 className="text-2xl font-bold mb-4">Your Matches</h1>
           
+          {/* User's own submission reminder */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h2 className="text-lg font-semibold mb-2 text-blue-800">Your Submission</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-blue-800">You're asking for:</p>
+                <p className="text-sm font-bold">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.askCategory : ""}</p>
+                <p className="text-sm">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.asking : ""}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-800">You're offering:</p>
+                <p className="text-sm font-bold">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.giveCategory : ""}</p>
+                <p className="text-sm">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.giving : ""}</p>
+              </div>
+            </div>
+          </div>
+          
           {matches.length === 0 ? (
             <p>No matches found yet. Check back later!</p>
           ) : (
             <div className="space-y-4">
-              {matches.map((match, index) => (
+              {matches.map((match, index) => {
+                // Determine match types
+                const theyAskWhatIOffer = match.matchTypes && match.matchTypes.theyAskWhatIOffer;
+                const theyOfferWhatIAsk = match.matchTypes && match.matchTypes.theyOfferWhatIAsk;
+                const mutualMatch = theyAskWhatIOffer && theyOfferWhatIAsk;
+                
+                return (
                 <div key={index} className="border rounded-md p-4 bg-gray-50">
                   <div className="flex justify-between items-start">
                     <div>
@@ -534,23 +594,31 @@ const NetworkingMatcher = () => {
                       )}
                     </div>
                     <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                      Match Strength: {match.matchScore}
+                      {mutualMatch ? "Two-way Match!" : "Match"}
                     </div>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div className="bg-red-50 p-2 rounded">
-                      <p className="text-xs uppercase font-semibold text-red-700">Asking for</p>
-                      <p className="text-sm font-medium">{match.AskCategory}</p>
-                      <p className="text-sm mt-1">{match.AskingDetails}</p>
-                    </div>
-                    <div className="bg-green-50 p-2 rounded">
-                      <p className="text-xs uppercase font-semibold text-green-700">Offering</p>
-                      <p className="text-sm font-medium">{match.GiveCategory}</p>
-                      <p className="text-sm mt-1">{match.GivingDetails}</p>
-                    </div>
+                  <div className="mt-3 grid grid-cols-1 gap-3">
+                    {(theyAskWhatIOffer || mutualMatch) && (
+                      <div className="bg-red-50 p-2 rounded">
+                        <p className="text-xs uppercase font-semibold text-red-700">They're Looking For</p>
+                        <p className="text-sm font-medium">{match.AskCategory}</p>
+                        <p className="text-sm mt-1">{match.AskingDetails}</p>
+                        <p className="text-xs text-green-600 mt-2 italic">This matches what you can offer</p>
+                      </div>
+                    )}
+                    
+                    {(theyOfferWhatIAsk || mutualMatch) && (
+                      <div className="bg-green-50 p-2 rounded">
+                        <p className="text-xs uppercase font-semibold text-green-700">They're Offering</p>
+                        <p className="text-sm font-medium">{match.GiveCategory}</p>
+                        <p className="text-sm mt-1">{match.GivingDetails}</p>
+                        <p className="text-xs text-red-600 mt-2 italic">This matches what you're looking for</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+              )})}
+              
             </div>
           )}
           
