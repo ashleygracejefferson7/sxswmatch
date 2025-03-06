@@ -149,18 +149,14 @@ const NetworkingMatcher = () => {
       
       // Score each potential match
       let matchScore = 0;
-      let theyAskWhatIOffer = false;
-      let theyOfferWhatIAsk = false;
       
       // Category matches (direct category matches are strong signals)
       if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
         matchScore += 3;
-        theyOfferWhatIAsk = true;
       }
       
       if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
         matchScore += 3;
-        theyAskWhatIOffer = true;
       }
       
       // Keyword matches
@@ -171,7 +167,6 @@ const NetworkingMatcher = () => {
       userGivingKeywords.forEach(keyword => {
         if (theirAskingKeywords.includes(keyword) || user.AskingDetails.toLowerCase().includes(keyword)) {
           matchScore += 1;
-          theyAskWhatIOffer = true;
         }
       });
       
@@ -179,7 +174,6 @@ const NetworkingMatcher = () => {
       userAskingKeywords.forEach(keyword => {
         if (theirGivingKeywords.includes(keyword) || user.GivingDetails.toLowerCase().includes(keyword)) {
           matchScore += 1;
-          theyOfferWhatIAsk = true;
         }
       });
       
