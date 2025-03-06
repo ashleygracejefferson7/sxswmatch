@@ -369,6 +369,9 @@ const NetworkingMatcher = () => {
       .sort((a, b) => b.matchScore - a.matchScore);
     
     setMatches(scoredMatches);
+    
+    // Return the matches array for use in checkMatches
+    return scoredMatches;
   };
 
   const checkMatches = async () => {
@@ -396,7 +399,23 @@ const NetworkingMatcher = () => {
       );
       
       if (userSubmission) {
-        findMatches(userSubmission, data.records || data);
+        // Store user's submission info for display even if there are no matches
+        const currentUserInfo = {
+          askCategory: userSubmission.AskCategory,
+          asking: userSubmission.AskingDetails,
+          giveCategory: userSubmission.GiveCategory,
+          giving: userSubmission.GivingDetails,
+          email: userSubmission.Email
+        };
+        
+        // Set matches (might be empty array if no matches)
+        const matchResults = findMatches(userSubmission, data.records || data);
+        
+        // If no matches, we still want to display user info, so create a dummy match object with just the user info
+        if (matchResults.length === 0) {
+          setMatches([{ currentUserInfo }]);
+        }
+        
         setView('matches');
       } else {
         alert("Email not found. Please submit the form first.");
