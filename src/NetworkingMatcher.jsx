@@ -22,6 +22,7 @@ const NetworkingMatcher = () => {
   };
 
   const [view, setView] = useState('form'); // 'form', 'thanks', 'matches'
+  const [userSubmissionInfo, setUserSubmissionInfo] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -399,8 +400,8 @@ const NetworkingMatcher = () => {
       );
       
       if (userSubmission) {
-        // Store user's submission info for display even if there are no matches
-        const currentUserInfo = {
+        // Create user info object for display
+        const userInfo = {
           askCategory: userSubmission.AskCategory,
           asking: userSubmission.AskingDetails,
           giveCategory: userSubmission.GiveCategory,
@@ -408,13 +409,12 @@ const NetworkingMatcher = () => {
           email: userSubmission.Email
         };
         
-        // Set matches (might be empty array if no matches)
-        const matchResults = findMatches(userSubmission, data.records || data);
+        // Store the user's submission info
+        setUserSubmissionInfo(userInfo);
         
-        // If no matches, we still want to display user info, so create a dummy match object with just the user info
-        if (matchResults.length === 0) {
-          setMatches([{ currentUserInfo }]);
-        }
+        // Find actual matches
+        const actualMatches = findMatches(userSubmission, data.records || data);
+        setMatches(actualMatches);
         
         setView('matches');
       } else {
@@ -698,21 +698,23 @@ const NetworkingMatcher = () => {
           <h1 className="text-2xl font-bold mb-4">Your Matches</h1>
           
           {/* User's own submission reminder */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h2 className="text-lg font-semibold mb-2 text-blue-800">Your Submission</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-blue-800">You're asking for:</p>
-                <p className="text-sm font-bold">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.askCategory : ""}</p>
-                <p className="text-sm">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.asking : ""}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-blue-800">You're offering:</p>
-                <p className="text-sm font-bold">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.giveCategory : ""}</p>
-                <p className="text-sm">{matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.giving : ""}</p>
+          {userSubmissionInfo && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h2 className="text-lg font-semibold mb-2 text-blue-800">Your Submission</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-blue-800">You're asking for:</p>
+                  <p className="text-sm font-bold">{userSubmissionInfo.askCategory}</p>
+                  <p className="text-sm">{userSubmissionInfo.asking}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-blue-800">You're offering:</p>
+                  <p className="text-sm font-bold">{userSubmissionInfo.giveCategory}</p>
+                  <p className="text-sm">{userSubmissionInfo.giving}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
           {matches.length === 0 ? (
             <p>No matches found yet. Check back later!</p>
