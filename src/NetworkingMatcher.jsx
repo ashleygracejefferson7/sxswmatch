@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // Your Google Apps Script Web App URL
-const API_URL = 'https://script.google.com/macros/s/AKfycbyQWAqnnYALWF4tBBqwj69Na1BbWDHqPLpt0ge_NCHDgxeLuq14_qXrOp_HxK4Z77dU/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw0Er7Ub0xnTMzHHsWuqQkghYAlvgrfmZLaOb2WDcv1r_P2l00Z9TJyBwf1aEP8yfkg/exec';
 
 const RetentionMessage = () => (
   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded">
@@ -35,15 +35,24 @@ const NetworkingMatcher = () => {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [matchFeedback, setMatchFeedback] = useState({});
 
-  // Load data from Google Sheets API
+  // Load data from Google Sheets API and feedback data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         const response = await fetch(API_URL);
         const data = await response.json();
-        setSubmissions(data);
+        
+        // The API now returns both records and feedback
+        setSubmissions(data.records || data);
+        
+        // Set feedback if available
+        if (data.feedback) {
+          setMatchFeedback(data.feedback);
+        }
+        
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -54,6 +63,67 @@ const NetworkingMatcher = () => {
 
     fetchData();
   }, []);
+  
+  // Handle match feedback (relevant/irrelevant)
+  const handleMatchFeedback = async (matchEmail, feedbackType) => {
+    // Get current user email
+    const currentUserEmail = formData.email || 
+      (matches.length > 0 && matches[0].currentUserInfo ? matches[0].currentUserInfo.email : '');
+      
+    if (!currentUserEmail) {
+      alert("Please enter your email to provide feedback");
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Send feedback to Google Sheets
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'feedback',
+          userEmail: currentUserEmail,
+          matchEmail: matchEmail,
+          feedbackType: feedbackType
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Update local state
+        const feedbackKey = `${currentUserEmail}-${matchEmail}`;
+        const newFeedback = {
+          ...matchFeedback,
+          [feedbackKey]: feedbackType
+        };
+        setMatchFeedback(newFeedback);
+        
+        // Show acknowledgment
+        alert(`Thank you for your feedback! This will improve future matches.`);
+        
+        // Refresh matches if in matches view
+        if (view === 'matches') {
+          const userSubmission = submissions.find(
+            sub => sub.Email.toLowerCase() === currentUserEmail.toLowerCase()
+          );
+          
+          if (userSubmission) {
+            findMatches(userSubmission, submissions);
+          }
+        }
+      } else {
+        alert("Could not save your feedback. Please try again later.");
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+      alert("Error connecting to the server. Please try again later.");
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -129,111 +199,174 @@ const NetworkingMatcher = () => {
   };
 
   const findMatches = (currentUser, allUsers) => {
-    // More sophisticated matching algorithm with keywords and categories
+    // More sophisticated matching algorithm with weighted scoring and better keyword extraction
     
-    // Extract keywords from the asking/giving text
+    // Enhanced keyword extraction with better stopwords list
     const extractKeywords = (text) => {
       if (!text) return [];
-      // Remove common words and split by spaces, commas, etc.
-      const commonWords = ['a', 'an', 'the', 'and', 'or', 'but', 'i', 'in', 'with', 'for'];
+      
+      // Expanded stopwords list - common words that don't add matching value
+      const stopwords = [
+        'a', 'an', 'the', 'and', 'or', 'but', 'i', 'in', 'with', 'for', 'to', 'from', 'by', 
+        'on', 'at', 'of', 'about', 'as', 'into', 'like', 'through', 'after', 'over', 'between', 
+        'out', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 
+        'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'may', 'might', 'must', 'can', 
+        'could', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 
+        'their', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how',
+        'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some', 'such', 'no', 'nor',
+        'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'looking',
+        'want', 'need', 'help', 'someone', 'anyone', 'everyone', 'interested', 'able',
+        'possible', 'trying', 'going', 'based', 'make', 'makes', 'made', 'making'
+      ];
+      
+      // Extract words, convert to lowercase, remove common words and short words
       return text.toLowerCase()
-        .split(/[\s,;.!?]+/)
-        .filter(word => word.length > 2 && !commonWords.includes(word));
+        .split(/[\s,;.!?()\[\]"'-]+/)
+        .filter(word => word.length > 3 && !stopwords.includes(word));
     };
     
+    // Get keywords from current user's asking and giving
     const userAskingKeywords = extractKeywords(currentUser.AskingDetails);
     const userGivingKeywords = extractKeywords(currentUser.GivingDetails);
     
-    const potentialMatches = allUsers.filter(user => {
-      if (user.Email === currentUser.Email) return false;
-      
-      // Score each potential match
-      let matchScore = 0;
-      
-      // Category matches (direct category matches are strong signals)
-      if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
-        matchScore += 3;
-      }
-      
-      if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
-        matchScore += 3;
-      }
-      
-      // Keyword matches
-      const theirAskingKeywords = extractKeywords(user.AskingDetails);
-      const theirGivingKeywords = extractKeywords(user.GivingDetails);
-      
-      // What I'm giving matches what they're asking
-      userGivingKeywords.forEach(keyword => {
-        if (theirAskingKeywords.includes(keyword) || user.AskingDetails.toLowerCase().includes(keyword)) {
-          matchScore += 1;
-        }
-      });
-      
-      // What I'm asking matches what they're giving
-      userAskingKeywords.forEach(keyword => {
-        if (theirGivingKeywords.includes(keyword) || user.GivingDetails.toLowerCase().includes(keyword)) {
-          matchScore += 1;
-        }
-      });
-      
-      // Return true if there's a significant match
-      return matchScore >= 1;
-    });
+    // Define match thresholds - these can be adjusted based on testing
+    const CATEGORY_MATCH_WEIGHT = 5;          // Weight for exact category match
+    const KEYWORD_MATCH_WEIGHT = 1;           // Base weight for keyword match
+    const SPECIFIC_KEYWORD_BONUS = 0.5;       // Bonus for longer/more specific keywords
+    const MINIMUM_MATCH_THRESHOLD = 3;        // Minimum score to be considered a match
+    const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
+    
+    // Use feedback data from server instead of localStorage
+    const userFeedback = matchFeedback || {};
     
     // Extract current user's submission information to display in matches view
     const currentUserInfo = {
       askCategory: currentUser.AskCategory,
       asking: currentUser.AskingDetails,
       giveCategory: currentUser.GiveCategory,
-      giving: currentUser.GivingDetails
+      giving: currentUser.GivingDetails,
+      email: currentUser.Email
     };
     
-    // Sort matches by score (most relevant first)
-    const scoredMatches = potentialMatches.map(user => {
-      let score = 0;
-      let theyAskWhatIOffer = false;
-      let theyOfferWhatIAsk = false;
-      
-      // Recalculate score for sorting
-      if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
-        score += 3;
-        theyOfferWhatIAsk = true;
-      }
-      
-      if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
-        score += 3;
-        theyAskWhatIOffer = true;
-      }
-      
-      const keywords1 = extractKeywords(currentUser.GivingDetails);
-      const keywords2 = extractKeywords(user.AskingDetails);
-      keywords1.forEach(k => {
-        if (keywords2.includes(k) || user.AskingDetails.toLowerCase().includes(k)) {
-          score += 1;
+    // Process all potential matches
+    const scoredMatches = allUsers
+      .filter(user => user.Email !== currentUser.Email) // Exclude self
+      .map(user => {
+        // Initialize match data
+        let askingMatchScore = 0;
+        let givingMatchScore = 0;
+        let theyAskWhatIOffer = false;
+        let theyOfferWhatIAsk = false;
+        
+        // Check for exact category matches (high weight)
+        if (currentUser.AskCategory && user.GiveCategory === currentUser.AskCategory) {
+          theyOfferWhatIAsk = true;
+          askingMatchScore += CATEGORY_MATCH_WEIGHT;
+        }
+        
+        if (currentUser.GiveCategory && user.AskCategory === currentUser.GiveCategory) {
+          theyAskWhatIOffer = true;
+          givingMatchScore += CATEGORY_MATCH_WEIGHT;
+        }
+        
+        // Extract keywords from their asking and giving
+        const theirAskingKeywords = extractKeywords(user.AskingDetails);
+        const theirGivingKeywords = extractKeywords(user.GivingDetails);
+        
+        // Create sets of matched keywords for explanation
+        const matchedGivingKeywords = new Set();
+        const matchedAskingKeywords = new Set();
+        
+        // Check if what I'm giving matches what they're asking for
+        userGivingKeywords.forEach(myKeyword => {
+          const matches = theirAskingKeywords.filter(theirKeyword => 
+            theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
+          );
+          
+          if (matches.length > 0) {
+            // Add base score for the match
+            givingMatchScore += KEYWORD_MATCH_WEIGHT;
+            
+            // Add bonus for longer, more specific keywords
+            if (myKeyword.length > 6) {
+              givingMatchScore += SPECIFIC_KEYWORD_BONUS;
+            }
+            
+            // Track matched keywords for explanation
+            matchedGivingKeywords.add(myKeyword);
+            matches.forEach(match => matchedGivingKeywords.add(match));
+          }
+        });
+        
+        // Check if what I'm asking for matches what they're giving
+        userAskingKeywords.forEach(myKeyword => {
+          const matches = theirGivingKeywords.filter(theirKeyword => 
+            theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
+          );
+          
+          if (matches.length > 0) {
+            // Add base score for the match
+            askingMatchScore += KEYWORD_MATCH_WEIGHT;
+            
+            // Add bonus for longer, more specific keywords
+            if (myKeyword.length > 6) {
+              askingMatchScore += SPECIFIC_KEYWORD_BONUS;
+            }
+            
+            // Track matched keywords for explanation
+            matchedAskingKeywords.add(myKeyword);
+            matches.forEach(match => matchedAskingKeywords.add(match));
+          }
+        });
+        
+        // Apply match thresholds
+        if (givingMatchScore >= MINIMUM_MATCH_THRESHOLD) {
           theyAskWhatIOffer = true;
         }
-      });
-      
-      const keywords3 = extractKeywords(currentUser.AskingDetails);
-      const keywords4 = extractKeywords(user.GivingDetails);
-      keywords3.forEach(k => {
-        if (keywords4.includes(k) || user.GivingDetails.toLowerCase().includes(k)) {
-          score += 1;
+        
+        if (askingMatchScore >= MINIMUM_MATCH_THRESHOLD) {
           theyOfferWhatIAsk = true;
         }
-      });
-      
-      return { 
-        ...user, 
-        matchScore: score,
-        matchTypes: {
-          theyAskWhatIOffer,
-          theyOfferWhatIAsk
-        },
-        currentUserInfo // Add current user's info to every match
-      };
-    }).sort((a, b) => b.matchScore - a.matchScore);
+        
+        // Calculate total match score
+        const totalMatchScore = askingMatchScore + givingMatchScore;
+        
+        // Check for user feedback on this match
+        const feedbackKey = `${currentUser.Email}-${user.Email}`;
+        const hasPositiveFeedback = userFeedback[feedbackKey] === 'relevant';
+        const hasNegativeFeedback = userFeedback[feedbackKey] === 'irrelevant';
+        
+        // Apply feedback adjustments
+        let adjustedScore = totalMatchScore;
+        if (hasPositiveFeedback) {
+          adjustedScore += 3; // Boost score for positive feedback
+        } else if (hasNegativeFeedback) {
+          adjustedScore -= 5; // Significantly reduce score for negative feedback
+        }
+        
+        // Return enhanced match data
+        return { 
+          ...user, 
+          matchScore: adjustedScore,
+          askingMatchScore,
+          givingMatchScore,
+          matchQuality: adjustedScore >= TWO_WAY_MATCH_THRESHOLD ? 'strong' : 'moderate',
+          matchExplanation: {
+            askingMatches: Array.from(matchedAskingKeywords),
+            givingMatches: Array.from(matchedGivingKeywords)
+          },
+          matchTypes: {
+            theyAskWhatIOffer,
+            theyOfferWhatIAsk
+          },
+          currentUserInfo, // Add current user's info to every match
+          hasFeedback: hasPositiveFeedback || hasNegativeFeedback
+        };
+      })
+      // Filter out low-scoring matches
+      .filter(match => (match.matchScore >= MINIMUM_MATCH_THRESHOLD) || match.hasFeedback)
+      // Sort by score (highest first)
+      .sort((a, b) => b.matchScore - a.matchScore);
     
     setMatches(scoredMatches);
   };
@@ -250,15 +383,20 @@ const NetworkingMatcher = () => {
       // Refresh data to get latest matches
       const response = await fetch(API_URL);
       const data = await response.json();
-      setSubmissions(data);
+      
+      // Set submissions and feedback from the response
+      setSubmissions(data.records || data);
+      if (data.feedback) {
+        setMatchFeedback(data.feedback);
+      }
       
       // Find matches for the email entered
-      const userSubmission = data.find(
+      const userSubmission = (data.records || data).find(
         sub => sub.Email.toLowerCase() === formData.email.toLowerCase()
       );
       
       if (userSubmission) {
-        findMatches(userSubmission, data);
+        findMatches(userSubmission, data.records || data);
         setView('matches');
       } else {
         alert("Email not found. Please submit the form first.");
@@ -587,17 +725,29 @@ const NetworkingMatcher = () => {
                         </a>
                       )}
                     </div>
-                    <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
-                      {mutualMatch ? "Two-way Match!" : "Match"}
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      match.matchQuality === 'strong' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {mutualMatch ? "Two-way Match!" : "Match"} 
+                      {match.matchQuality === 'strong' && " ★★★"}
+                      {match.matchQuality === 'moderate' && " ★★"}
                     </div>
                   </div>
+                  
                   <div className="mt-3 grid grid-cols-1 gap-3">
                     {(theyAskWhatIOffer || mutualMatch) && (
                       <div className="bg-red-50 p-2 rounded">
                         <p className="text-xs uppercase font-semibold text-red-700">They're Looking For</p>
                         <p className="text-sm font-medium">{match.AskCategory}</p>
                         <p className="text-sm mt-1">{match.AskingDetails}</p>
-                        <p className="text-xs text-green-600 mt-2 italic">This matches what you can offer</p>
+                        <div className="text-xs text-green-600 mt-2 italic">
+                          <p>This matches what you can offer</p>
+                          {match.matchExplanation && match.matchExplanation.givingMatches.length > 0 && (
+                            <p className="mt-1">Matching terms: {match.matchExplanation.givingMatches.join(', ')}</p>
+                          )}
+                        </div>
                       </div>
                     )}
                     
@@ -606,13 +756,34 @@ const NetworkingMatcher = () => {
                         <p className="text-xs uppercase font-semibold text-green-700">They're Offering</p>
                         <p className="text-sm font-medium">{match.GiveCategory}</p>
                         <p className="text-sm mt-1">{match.GivingDetails}</p>
-                        <p className="text-xs text-red-600 mt-2 italic">This matches what you're looking for</p>
+                        <div className="text-xs text-red-600 mt-2 italic">
+                          <p>This matches what you're looking for</p>
+                          {match.matchExplanation && match.matchExplanation.askingMatches.length > 0 && (
+                            <p className="mt-1">Matching terms: {match.matchExplanation.askingMatches.join(', ')}</p>
+                          )}
+                        </div>
                       </div>
                     )}
+                    
+                    {/* Match Feedback Controls */}
+                    <div className="mt-2 flex items-center justify-end space-x-2">
+                      <span className="text-xs text-gray-500">Is this match relevant?</span>
+                      <button 
+                        onClick={() => handleMatchFeedback(match.Email, 'relevant')}
+                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                      >
+                        Yes
+                      </button>
+                      <button 
+                        onClick={() => handleMatchFeedback(match.Email, 'irrelevant')}
+                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        No
+                      </button>
+                    </div>
                   </div>
                 </div>
               )})}
-              
             </div>
           )}
           
