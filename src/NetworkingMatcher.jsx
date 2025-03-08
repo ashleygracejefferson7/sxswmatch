@@ -678,6 +678,29 @@ const NetworkingMatcher = () => {
     }
   };
 
+  // Calculate if this is a multi-directional match
+  const isMultiDirectionalMatch = (match) => {
+    return match.askMatches.length > 0 && match.offerMatches.length > 0;
+  };
+
+  // Get the appropriate match quality text
+  const getMatchQualityText = (match) => {
+    if (match.matchQuality === 'strong') {
+      return "Strong Match";
+    } else {
+      return "Good Match";
+    }
+  };
+
+  // Get the appropriate match quality color
+  const getMatchQualityColor = (match) => {
+    if (match.matchQuality === 'strong') {
+      return "bg-indigo-600";
+    } else {
+      return "bg-blue-600";
+    }
+  };
+
   return (
     <div className="p-6 max-w-2xl mx-auto bg-white rounded-xl shadow-md" style={{backgroundColor: theme.background, color: theme.text}}>
       {loading && (
@@ -928,11 +951,11 @@ const NetworkingMatcher = () => {
           ) : (
             <div className="space-y-5">
               {matches.map((match, index) => (
-                <div key={index} className="border rounded-md p-4 bg-gray-50">
-                  {/* Match Header */}
-                  <div className="flex justify-between items-start">
+                <div key={index} className="bg-white rounded-lg shadow border border-gray-200 mb-4 overflow-hidden">
+                  {/* Header */}
+                  <div className="p-4 flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold">{match.Name}</h3>
+                      <h3 className="font-bold text-lg">{match.Name}</h3>
                       <p className="text-sm text-gray-500">{match.Email}</p>
                       {match.LinkedIn && (
                         <a 
@@ -948,101 +971,78 @@ const NetworkingMatcher = () => {
                         </a>
                       )}
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      match.matchQuality === 'strong' 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {match.askMatches.length > 0 && match.offerMatches.length > 0 
-                        ? "Two-way Match!" 
-                        : "Match"} 
-                      {match.matchQuality === 'strong' && " ★★★"}
-                      {match.matchQuality === 'moderate' && " ★★"}
+                    <div className={`${getMatchQualityColor(match)} text-white px-3 py-1 rounded-md text-xs font-medium`}>
+                      {getMatchQualityText(match)}
                     </div>
                   </div>
                   
-                  {/* Match Details */}
-                  <div className="mt-3 space-y-3">
-                    {/* Your Asks That Match Their Offers */}
-                    {match.askMatches.length > 0 && (
-                      <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                        <h4 className="text-sm font-semibold text-blue-800 mb-2">
-                          {match.askMatches.length > 1 
-                            ? `${match.askMatches.length} of Your Asks Matched Their Offers`
-                            : "Your Ask Matched Their Offer"}
-                        </h4>
+                  {/* Your Ask Matches Their Offer */}
+                  {match.askMatches.map((askMatch, idx) => (
+                    <div key={`ask-match-${idx}`} className={idx === 0 ? '' : 'border-t'}>
+                      {idx === 0 && match.askMatches.length + match.offerMatches.length > 1 && (
+                        <div className="bg-blue-50 px-4 py-2 text-blue-700 text-sm font-medium border-t">
+                          Match #{idx + 1}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 divide-x">
+                        {/* Left Panel - Your Ask */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">You're Looking For</h4>
+                          <p className="font-medium">{askMatch.userAskCategory}</p>
+                          <p className="text-sm mt-1">{askMatch.userAskDetails}</p>
+                        </div>
                         
-                        {match.askMatches.map((askMatch, idx) => (
-                          <div key={`ask-match-${idx}`} className={idx > 0 ? "mt-4 pt-4 border-t border-blue-100" : ""}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="bg-red-50 p-2 rounded">
-                                <p className="text-xs uppercase font-semibold text-red-700">You're Looking For</p>
-                                <p className="text-sm font-medium">{askMatch.userAskCategory}</p>
-                                <p className="text-sm mt-1">{askMatch.userAskDetails}</p>
-                              </div>
-                              <div className="bg-green-50 p-2 rounded">
-                                <p className="text-xs uppercase font-semibold text-green-700">They're Offering</p>
-                                <p className="text-sm font-medium">{askMatch.theirOfferCategory}</p>
-                                <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
-                              </div>
-                            </div>
-                            {askMatch.matchedTerms && askMatch.matchedTerms.length > 0 && (
-                              <div className="mt-2 text-xs text-blue-600 italic">
-                                <span className="font-medium">Matching terms:</span> {askMatch.matchedTerms.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                        {/* Right Panel - Their Offer */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
+                          <p className="font-medium">{askMatch.theirOfferCategory}</p>
+                          <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* Your Offers That Match Their Asks */}
-                    {match.offerMatches.length > 0 && (
-                      <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                        <h4 className="text-sm font-semibold text-blue-800 mb-2">
-                          {match.offerMatches.length > 1 
-                            ? `${match.offerMatches.length} of Your Offers Matched Their Asks` 
-                            : "Your Offer Matched Their Ask"}
-                        </h4>
+                    </div>
+                  ))}
+                  
+                  {/* Their Ask Matches Your Offer */}
+                  {match.offerMatches.map((offerMatch, idx) => (
+                    <div key={`offer-match-${idx}`} className={(match.askMatches.length > 0 || idx > 0) ? 'border-t' : ''}>
+                      {(match.askMatches.length > 0 || idx > 0) && match.askMatches.length + match.offerMatches.length > 1 && (
+                        <div className="bg-blue-50 px-4 py-2 text-blue-700 text-sm font-medium">
+                          Match #{match.askMatches.length + idx + 1}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 divide-x">
+                        {/* Left Panel - Their Ask */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
+                          <p className="font-medium">{offerMatch.theirAskCategory}</p>
+                          <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
+                        </div>
                         
-                        {match.offerMatches.map((offerMatch, idx) => (
-                          <div key={`offer-match-${idx}`} className={idx > 0 ? "mt-4 pt-4 border-t border-blue-100" : ""}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="bg-green-50 p-2 rounded">
-                                <p className="text-xs uppercase font-semibold text-green-700">You're Offering</p>
-                                <p className="text-sm font-medium">{offerMatch.userOfferCategory}</p>
-                                <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
-                              </div>
-                              <div className="bg-red-50 p-2 rounded">
-                                <p className="text-xs uppercase font-semibold text-red-700">They're Looking For</p>
-                                <p className="text-sm font-medium">{offerMatch.theirAskCategory}</p>
-                                <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
-                              </div>
-                            </div>
-                            {offerMatch.matchedTerms && offerMatch.matchedTerms.length > 0 && (
-                              <div className="mt-2 text-xs text-blue-600 italic">
-                                <span className="font-medium">Matching terms:</span> {offerMatch.matchedTerms.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                        {/* Right Panel - Your Offer */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">You're Offering</h4>
+                          <p className="font-medium">{offerMatch.userOfferCategory}</p>
+                          <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
+                        </div>
                       </div>
-                    )}
-                    
-                    {/* Match Feedback Controls */}
-                    <div className="mt-2 flex items-center justify-end space-x-2">
-                      <span className="text-xs text-gray-500">Is this match relevant?</span>
-                      <button 
+                    </div>
+                  ))}
+                  
+                  {/* Feedback Section */}
+                  <div className="px-4 py-3 bg-gray-50 border-t flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Rate this match (improves recommendations only):</span>
+                    <div className="space-x-2">
+                      <button
                         onClick={() => handleMatchFeedback(match.Email, 'relevant')}
                         className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
                       >
-                        Yes
+                        👍 Helpful
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleMatchFeedback(match.Email, 'irrelevant')}
                         className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
                       >
-                        No
+                        👎 Not Helpful
                       </button>
                     </div>
                   </div>
