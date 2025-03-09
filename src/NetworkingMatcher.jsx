@@ -1,122 +1,4 @@
-{matches.length === 0 ? (
-            <p>No matches found yet. Check back later!</p>
-          ) : (
-            <div className="space-y-5">
-              {matches.map((match, index) => (
-                <div key={index} className="bg-white rounded-lg shadow border border-gray-200 mb-4 overflow-hidden">
-                  {/* Header */}
-                  <div className="p-4 flex justify-between items-start">
-                    <div>
-                      <h3 className="font-bold text-lg">{match.Name}</h3>
-                      <p className="text-sm text-gray-500">{match.Email}</p>
-                      {match.LinkedIn && (
-                        <a 
-                          href={match.LinkedIn} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-sm text-blue-600 hover:underline flex items-center mt-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-                          </svg>
-                          LinkedIn Profile
-                        </a>
-                      )}
-                    </div>
-                    <div className={`${getMatchQualityColor(match)} text-white px-3 py-1 rounded-md text-xs font-medium`}>
-                      {getMatchQualityText(match)}
-                    </div>
-                  </div>
-                  
-                  {/* Your Ask Matches Their Offer */}
-                  {match.askMatches.map((askMatch, idx) => (
-                    <div key={`ask-match-${idx}`} className={idx === 0 ? '' : 'border-t'}>
-                      {idx === 0 && match.askMatches.length + match.offerMatches.length > 1 && (
-                        <div className="bg-blue-50 px-4 py-2 text-blue-700 text-sm font-medium border-t">
-                          Match #{idx + 1}
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 divide-x">
-                        {/* Left Panel - Your Ask */}
-                        <div className="p-4">
-                          <h4 className="text-sm uppercase text-gray-500 mb-2">You're Looking For</h4>
-                          <p className="font-medium">{askMatch.userAskCategory}</p>
-                          <p className="text-sm mt-1">{askMatch.userAskDetails}</p>
-                        </div>
-                        
-                        {/* Right Panel - Their Offer */}
-                        <div className="p-4">
-                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
-                          <p className="font-medium">{askMatch.theirOfferCategory}</p>
-                          <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Their Ask Matches Your Offer */}
-                  {match.offerMatches.map((offerMatch, idx) => (
-                    <div key={`offer-match-${idx}`} className={(match.askMatches.length > 0 || idx > 0) ? 'border-t' : ''}>
-                      {(match.askMatches.length > 0 || idx > 0) && match.askMatches.length + match.offerMatches.length > 1 && (
-                        <div className="bg-blue-50 px-4 py-2 text-blue-700 text-sm font-medium">
-                          Match #{match.askMatches.length + idx + 1}
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 divide-x">
-                        {/* Left Panel - Their Ask */}
-                        <div className="p-4">
-                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
-                          <p className="font-medium">{offerMatch.theirAskCategory}</p>
-                          <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
-                        </div>
-                        
-                        {/* Right Panel - Your Offer */}
-                        <div className="p-4">
-                          <h4 className="text-sm uppercase text-gray-500 mb-2">You're Offering</h4>
-                          <p className="font-medium">{offerMatch.userOfferCategory}</p>
-                          <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Feedback Section */}
-                  <div className="px-4 py-3 bg-gray-50 border-t flex items-center justify-between">
-                    <span className="text-xs text-gray-500">Rate this match (improves recommendations only):</span>
-                    <div className="space-x-2">
-                      <button
-                        onClick={() => handleMatchFeedback(match.Email, 'relevant')}
-                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
-                      >
-                        👍 Helpful
-                      </button>
-                      <button
-                        onClick={() => handleMatchFeedback(match.Email, 'irrelevant')}
-                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                      >
-                        👎 Not Helpful
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          <button
-            onClick={() => setView('form')}
-            className="mt-6 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
-            style={{backgroundColor: theme.primary}}
-          >
-            Return to Form
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default NetworkingMatcher;import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 
 // Your Google Apps Script Web App URL
@@ -913,6 +795,285 @@ const NetworkingMatcher = () => {
   };
 
   // Handle updating an existing submission
+  const handleUpdateSubmission = async (updatedData) => {
+    try {
+      setLoading(true);
+      
+      // Validate that required fields are filled
+      if (!updatedData.asks[0].category || !updatedData.asks[0].details ||
+          !updatedData.offers[0].category || !updatedData.offers[0].details) {
+        alert("Please fill in all required fields.");
+        setLoading(false);
+        return;
+      }
+      
+      // Send data to Google Sheets
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'update',
+          name: updatedData.name,
+          email: updatedData.email,
+          linkedin: updatedData.linkedin,
+          asks: updatedData.asks,
+          offers: updatedData.offers
+        })
+      });
+      
+      const result = await response.json();
+const result = await response.json();
+      
+      if (result.success) {
+        // Update submission in local state
+        const updatedSubmissions = submissions.map(sub => {
+          if (sub.Email.toLowerCase() === updatedData.email.toLowerCase()) {
+            return {
+              ...sub,
+              Name: updatedData.name,
+              Email: updatedData.email,
+              LinkedIn: updatedData.linkedin,
+              asks: updatedData.asks,
+              offers: updatedData.offers,
+              Timestamp: new Date().toString() // Update timestamp
+            };
+          }
+          return sub;
+        });
+        
+        setSubmissions(updatedSubmissions);
+        
+        // Update user's submission info
+        setUserSubmissionInfo({
+          name: updatedData.name,
+          email: updatedData.email,
+          asks: updatedData.asks,
+          offers: updatedData.offers
+        });
+        
+        // Find updated matches
+        const updatedUser = {
+          Name: updatedData.name,
+          Email: updatedData.email,
+          LinkedIn: updatedData.linkedin,
+          asks: updatedData.asks,
+          offers: updatedData.offers,
+          Timestamp: new Date().toString()
+        };
+        
+        findMatches(updatedUser, updatedSubmissions);
+        
+        // Show matches view
+        setView('matches');
+        
+        // Show success message
+        alert("Your submission has been successfully updated!");
+      } else {
+        setError("Error updating your information. Please try again.");
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error updating submission:', err);
+      setError("Error connecting to the server. Please try again later.");
+      setLoading(false);
+    }
+  };
+
+  const findMatches = (currentUser, allUsers) => {
+    // Enhanced keyword extraction with better stopwords list
+    const extractKeywords = (text) => {
+      if (!text) return [];
+      
+      // Expanded stopwords list - common words that don't add matching value
+      const stopwords = [
+        'a', 'an', 'the', 'and', 'or', 'but', 'i', 'in', 'with', 'for', 'to', 'from', 'by', 
+        'on', 'at', 'of', 'about', 'as', 'into', 'like', 'through', 'after', 'over', 'between', 
+        'out', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 
+        'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'may', 'might', 'must', 'can', 
+        'could', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 
+        'their', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how',
+        'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some', 'such', 'no', 'nor',
+        'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'looking',
+        'want', 'need', 'help', 'someone', 'anyone', 'everyone', 'interested', 'able',
+        'possible', 'trying', 'going', 'based', 'make', 'makes', 'made', 'making'
+      ];
+      
+      // Extract words, convert to lowercase, remove common words and short words
+      return text.toLowerCase()
+        .split(/[\s,;.!?()\[\]"'-]+/)
+        .filter(word => word.length > 3 && !stopwords.includes(word));
+    };
+    
+    // Define match thresholds - these can be adjusted based on testing
+    const CATEGORY_MATCH_WEIGHT = 5;          // Weight for exact category match
+    const KEYWORD_MATCH_WEIGHT = 1;           // Base weight for keyword match
+    const SPECIFIC_KEYWORD_BONUS = 0.5;       // Bonus for longer/more specific keywords
+    const MINIMUM_MATCH_THRESHOLD = 3;        // Minimum score to be considered a match
+    const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
+    
+    // Process all potential matches
+    const potentialMatches = allUsers
+      .filter(user => user.Email !== currentUser.Email) // Exclude self
+      .map(user => {
+        // Array to store detailed match information
+        const askMatches = [];
+        const offerMatches = [];
+        let totalMatchScore = 0;
+        
+        // Check each of the user's asks against the other user's offers
+        currentUser.asks.forEach((userAsk, userAskIndex) => {
+          // Skip empty asks
+          if (!userAsk || !userAsk.category || !userAsk.details) return;
+          
+          const userAskKeywords = extractKeywords(userAsk.details);
+          
+          // Check against each of their offers
+          user.offers.forEach((theirOffer, theirOfferIndex) => {
+            // Skip empty offers
+            if (!theirOffer || !theirOffer.category || !theirOffer.details) return;
+            
+            let matchScore = 0;
+            const matchedTerms = new Set();
+            
+            // Category match (high weight)
+            if (userAsk.category === theirOffer.category) {
+              matchScore += CATEGORY_MATCH_WEIGHT;
+            }
+            
+            // Keyword matches
+            const theirOfferKeywords = extractKeywords(theirOffer.details);
+            
+            userAskKeywords.forEach(myKeyword => {
+              const matches = theirOfferKeywords.filter(theirKeyword => 
+                theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
+              );
+              
+              if (matches.length > 0) {
+                // Add base score for the match
+                matchScore += KEYWORD_MATCH_WEIGHT;
+                
+                // Add bonus for longer, more specific keywords
+                if (myKeyword.length > 6) {
+                  matchScore += SPECIFIC_KEYWORD_BONUS;
+                }
+                
+                // Track matched keywords
+                matchedTerms.add(myKeyword);
+                matches.forEach(match => matchedTerms.add(match));
+              }
+            });
+            
+            // If the match score is high enough, record this match
+            if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
+              askMatches.push({
+                userAskIndex,
+                theirOfferIndex,
+                userAskCategory: userAsk.category,
+                userAskDetails: userAsk.details,
+                theirOfferCategory: theirOffer.category,
+                theirOfferDetails: theirOffer.details,
+                matchScore,
+                matchedTerms: Array.from(matchedTerms)
+              });
+              
+              totalMatchScore += matchScore;
+            }
+          });
+        });
+        
+        // Check each of the user's offers against the other user's asks
+        currentUser.offers.forEach((userOffer, userOfferIndex) => {
+          // Skip empty offers
+          if (!userOffer || !userOffer.category || !userOffer.details) return;
+          
+          const userOfferKeywords = extractKeywords(userOffer.details);
+          
+          // Check against each of their asks
+          user.asks.forEach((theirAsk, theirAskIndex) => {
+            // Skip empty asks
+            if (!theirAsk || !theirAsk.category || !theirAsk.details) return;
+            
+            let matchScore = 0;
+            const matchedTerms = new Set();
+            
+            // Category match (high weight)
+            if (userOffer.category === theirAsk.category) {
+              matchScore += CATEGORY_MATCH_WEIGHT;
+            }
+            
+            // Keyword matches
+            const theirAskKeywords = extractKeywords(theirAsk.details);
+            
+            userOfferKeywords.forEach(myKeyword => {
+              const matches = theirAskKeywords.filter(theirKeyword => 
+                theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
+              );
+              
+              if (matches.length > 0) {
+                // Add base score for the match
+                matchScore += KEYWORD_MATCH_WEIGHT;
+                
+                // Add bonus for longer, more specific keywords
+                if (myKeyword.length > 6) {
+                  matchScore += SPECIFIC_KEYWORD_BONUS;
+                }
+                
+                // Track matched keywords
+                matchedTerms.add(myKeyword);
+                matches.forEach(match => matchedTerms.add(match));
+              }
+            });
+            
+            // If the match score is high enough, record this match
+            if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
+              offerMatches.push({
+                userOfferIndex,
+                theirAskIndex,
+                userOfferCategory: userOffer.category,
+                userOfferDetails: userOffer.details,
+                theirAskCategory: theirAsk.category,
+                theirAskDetails: theirAsk.details,
+                matchScore,
+                matchedTerms: Array.from(matchedTerms)
+              });
+              
+              totalMatchScore += matchScore;
+            }
+          });
+        });
+        
+        // Check for user feedback on this match from Google Sheets
+        const feedbackKey = `${currentUser.Email}-${user.Email}`;
+        const hasPositiveFeedback = feedbackData[feedbackKey] === 'relevant';
+        const hasNegativeFeedback = feedbackData[feedbackKey] === 'irrelevant';
+        
+        // Apply feedback adjustments
+        let adjustedScore = totalMatchScore;
+        if (hasPositiveFeedback) {
+          adjustedScore += 3; // Boost score for positive feedback
+        } else if (hasNegativeFeedback) {
+          adjustedScore -= 5; // Significantly reduce score for negative feedback
+        }
+        
+        // Return match information
+        return {
+          ...user,
+          matchScore: adjustedScore,
+          matchQuality: adjustedScore >= TWO_WAY_MATCH_THRESHOLD ? 'strong' : 'moderate',
+          askMatches,
+          offerMatches,
+          hasFeedback: hasPositiveFeedback || hasNegativeFeedback
+        };
+      })
+      // Filter out entries with no matches
+      .filter(match => (match.askMatches.length > 0 || match.offerMatches.length > 0 || match.hasFeedback))
+      // Sort by score (highest first)
+      .sort((a, b) => b.matchScore - a.matchScore);
+    
+    setMatches(potentialMatches);
+    return potentialMatches;
+  };
+
   const checkMatches = async () => {
     if (!formData.email) {
       alert("Please enter your email address to check matches");
@@ -1174,8 +1335,7 @@ const NetworkingMatcher = () => {
           </form>
         </>
       )}
-      
-      {view === 'thanks' && (
+{view === 'thanks' && (
         <div className="text-center py-10">
           <h1 className="text-2xl font-bold mb-4">Thank you for submitting!</h1>
           <p className="mb-6">Your information has been recorded.</p>
@@ -1264,196 +1424,125 @@ const NetworkingMatcher = () => {
               )}
             </div>
           )}
-    // Enhanced keyword extraction with better stopwords list
-    const extractKeywords = (text) => {
-      if (!text) return [];
-      
-      // Expanded stopwords list - common words that don't add matching value
-      const stopwords = [
-        'a', 'an', 'the', 'and', 'or', 'but', 'i', 'in', 'with', 'for', 'to', 'from', 'by', 
-        'on', 'at', 'of', 'about', 'as', 'into', 'like', 'through', 'after', 'over', 'between', 
-        'out', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 
-        'do', 'does', 'did', 'will', 'would', 'shall', 'should', 'may', 'might', 'must', 'can', 
-        'could', 'this', 'that', 'these', 'those', 'my', 'your', 'his', 'her', 'its', 'our', 
-        'their', 'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how',
-        'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some', 'such', 'no', 'nor',
-        'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'looking',
-        'want', 'need', 'help', 'someone', 'anyone', 'everyone', 'interested', 'able',
-        'possible', 'trying', 'going', 'based', 'make', 'makes', 'made', 'making'
-      ];
-      
-      // Extract words, convert to lowercase, remove common words and short words
-      return text.toLowerCase()
-        .split(/[\s,;.!?()\[\]"'-]+/)
-        .filter(word => word.length > 3 && !stopwords.includes(word));
-    };
-    
-    // Define match thresholds - these can be adjusted based on testing
-    const CATEGORY_MATCH_WEIGHT = 5;          // Weight for exact category match
-    const KEYWORD_MATCH_WEIGHT = 1;           // Base weight for keyword match
-    const SPECIFIC_KEYWORD_BONUS = 0.5;       // Bonus for longer/more specific keywords
-    const MINIMUM_MATCH_THRESHOLD = 3;        // Minimum score to be considered a match
-    const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
-    
-    // Process all potential matches
-    const potentialMatches = allUsers
-      .filter(user => user.Email !== currentUser.Email) // Exclude self
-      .map(user => {
-        // Array to store detailed match information
-        const askMatches = [];
-        const offerMatches = [];
-        let totalMatchScore = 0;
-        
-        // Check each of the user's asks against the other user's offers
-        currentUser.asks.forEach((userAsk, userAskIndex) => {
-          // Skip empty asks
-          if (!userAsk || !userAsk.category || !userAsk.details) return;
           
-          const userAskKeywords = extractKeywords(userAsk.details);
+          {matches.length === 0 ? (
+            <p>No matches found yet. Check back later!</p>
+          ) : (
+            <div className="space-y-5">
+              {matches.map((match, index) => (
+                <div key={index} className="bg-white rounded-lg shadow border border-gray-200 mb-4 overflow-hidden">
+                  {/* Header */}
+                  <div className="p-4 flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-lg">{match.Name}</h3>
+                      <p className="text-sm text-gray-500">{match.Email}</p>
+                      {match.LinkedIn && (
+                        <a 
+                          href={match.LinkedIn} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-sm text-blue-600 hover:underline flex items-center mt-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                          </svg>
+                          LinkedIn Profile
+                        </a>
+                      )}
+                    </div>
+                    <div className={`${getMatchQualityColor(match)} text-white px-3 py-1 rounded-md text-xs font-medium`}>
+                      {getMatchQualityText(match)}
+                    </div>
+                  </div>
+                  
+                  {/* Your Ask Matches Their Offer */}
+                  {match.askMatches.map((askMatch, idx) => (
+                    <div key={`ask-match-${idx}`} className={idx === 0 ? '' : 'border-t'}>
+                      {idx === 0 && match.askMatches.length + match.offerMatches.length > 1 && (
+                        <div className="bg-blue-50 px-4 py-2 text-blue-700 text-sm font-medium border-t">
+                          Match #{idx + 1}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 divide-x">
+                        {/* Left Panel - Your Ask */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">You're Looking For</h4>
+                          <p className="font-medium">{askMatch.userAskCategory}</p>
+                          <p className="text-sm mt-1">{askMatch.userAskDetails}</p>
+                        </div>
+                        
+                        {/* Right Panel - Their Offer */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
+                          <p className="font-medium">{askMatch.theirOffer
+<h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
+                          <p className="font-medium">{askMatch.theirOfferCategory}</p>
+                          <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Their Ask Matches Your Offer */}
+                  {match.offerMatches.map((offerMatch, idx) => (
+                    <div key={`offer-match-${idx}`} className={(match.askMatches.length > 0 || idx > 0) ? 'border-t' : ''}>
+                      {(match.askMatches.length > 0 || idx > 0) && match.askMatches.length + match.offerMatches.length > 1 && (
+                        <div className="bg-blue-50 px-4 py-2 text-blue-700 text-sm font-medium">
+                          Match #{match.askMatches.length + idx + 1}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 divide-x">
+                        {/* Left Panel - Their Ask */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
+                          <p className="font-medium">{offerMatch.theirAskCategory}</p>
+                          <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
+                        </div>
+                        
+                        {/* Right Panel - Your Offer */}
+                        <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">You're Offering</h4>
+                          <p className="font-medium">{offerMatch.userOfferCategory}</p>
+                          <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Feedback Section */}
+                  <div className="px-4 py-3 bg-gray-50 border-t flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Rate this match (improves recommendations only):</span>
+                    <div className="space-x-2">
+                      <button
+                        onClick={() => handleMatchFeedback(match.Email, 'relevant')}
+                        className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                      >
+                        👍 Helpful
+                      </button>
+                      <button
+                        onClick={() => handleMatchFeedback(match.Email, 'irrelevant')}
+                        className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        👎 Not Helpful
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           
-          // Check against each of their offers
-          user.offers.forEach((theirOffer, theirOfferIndex) => {
-            // Skip empty offers
-            if (!theirOffer || !theirOffer.category || !theirOffer.details) return;
-            
-            let matchScore = 0;
-            const matchedTerms = new Set();
-            
-            // Category match (high weight)
-            if (userAsk.category === theirOffer.category) {
-              matchScore += CATEGORY_MATCH_WEIGHT;
-            }
-            
-            // Keyword matches
-            const theirOfferKeywords = extractKeywords(theirOffer.details);
-            
-            userAskKeywords.forEach(myKeyword => {
-              const matches = theirOfferKeywords.filter(theirKeyword => 
-                theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
-              );
-              
-              if (matches.length > 0) {
-                // Add base score for the match
-                matchScore += KEYWORD_MATCH_WEIGHT;
-                
-                // Add bonus for longer, more specific keywords
-                if (myKeyword.length > 6) {
-                  matchScore += SPECIFIC_KEYWORD_BONUS;
-                }
-                
-                // Track matched keywords
-                matchedTerms.add(myKeyword);
-                matches.forEach(match => matchedTerms.add(match));
-              }
-            });
-            
-            // If the match score is high enough, record this match
-            if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
-              askMatches.push({
-                userAskIndex,
-                theirOfferIndex,
-                userAskCategory: userAsk.category,
-                userAskDetails: userAsk.details,
-                theirOfferCategory: theirOffer.category,
-                theirOfferDetails: theirOffer.details,
-                matchScore,
-                matchedTerms: Array.from(matchedTerms)
-              });
-              
-              totalMatchScore += matchScore;
-            }
-          });
-        });
-        
-        // Check each of the user's offers against the other user's asks
-        currentUser.offers.forEach((userOffer, userOfferIndex) => {
-          // Skip empty offers
-          if (!userOffer || !userOffer.category || !userOffer.details) return;
-          
-          const userOfferKeywords = extractKeywords(userOffer.details);
-          
-          // Check against each of their asks
-          user.asks.forEach((theirAsk, theirAskIndex) => {
-            // Skip empty asks
-            if (!theirAsk || !theirAsk.category || !theirAsk.details) return;
-            
-            let matchScore = 0;
-            const matchedTerms = new Set();
-            
-            // Category match (high weight)
-            if (userOffer.category === theirAsk.category) {
-              matchScore += CATEGORY_MATCH_WEIGHT;
-            }
-            
-            // Keyword matches
-            const theirAskKeywords = extractKeywords(theirAsk.details);
-            
-            userOfferKeywords.forEach(myKeyword => {
-              const matches = theirAskKeywords.filter(theirKeyword => 
-                theirKeyword.includes(myKeyword) || myKeyword.includes(theirKeyword)
-              );
-              
-              if (matches.length > 0) {
-                // Add base score for the match
-                matchScore += KEYWORD_MATCH_WEIGHT;
-                
-                // Add bonus for longer, more specific keywords
-                if (myKeyword.length > 6) {
-                  matchScore += SPECIFIC_KEYWORD_BONUS;
-                }
-                
-                // Track matched keywords
-                matchedTerms.add(myKeyword);
-                matches.forEach(match => matchedTerms.add(match));
-              }
-            });
-            
-            // If the match score is high enough, record this match
-            if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
-              offerMatches.push({
-                userOfferIndex,
-                theirAskIndex,
-                userOfferCategory: userOffer.category,
-                userOfferDetails: userOffer.details,
-                theirAskCategory: theirAsk.category,
-                theirAskDetails: theirAsk.details,
-                matchScore,
-                matchedTerms: Array.from(matchedTerms)
-              });
-              
-              totalMatchScore += matchScore;
-            }
-          });
-        });
-        
-        // Check for user feedback on this match from Google Sheets
-        const feedbackKey = `${currentUser.Email}-${user.Email}`;
-        const hasPositiveFeedback = feedbackData[feedbackKey] === 'relevant';
-        const hasNegativeFeedback = feedbackData[feedbackKey] === 'irrelevant';
-        
-        // Apply feedback adjustments
-        let adjustedScore = totalMatchScore;
-        if (hasPositiveFeedback) {
-          adjustedScore += 3; // Boost score for positive feedback
-        } else if (hasNegativeFeedback) {
-          adjustedScore -= 5; // Significantly reduce score for negative feedback
-        }
-        
-        // Return match information
-        return {
-          ...user,
-          matchScore: adjustedScore,
-          matchQuality: adjustedScore >= TWO_WAY_MATCH_THRESHOLD ? 'strong' : 'moderate',
-          askMatches,
-          offerMatches,
-          hasFeedback: hasPositiveFeedback || hasNegativeFeedback
-        };
-      })
-      // Filter out entries with no matches
-      .filter(match => (match.askMatches.length > 0 || match.offerMatches.length > 0 || match.hasFeedback))
-      // Sort by score (highest first)
-      .sort((a, b) => b.matchScore - a.matchScore);
-    
-    setMatches(potentialMatches);
-    return potentialMatches;
-  };
+          <button
+            onClick={() => setView('form')}
+            className="mt-6 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
+            style={{backgroundColor: theme.primary}}
+          >
+            Return to Form
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default NetworkingMatcher;
