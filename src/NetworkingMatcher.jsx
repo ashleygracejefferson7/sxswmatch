@@ -7,63 +7,76 @@ import RetentionMessage from './RetentionMessage';
 import EditSubmissionForm from './EditSubmissionForm';
 import PrintableMatches from './PrintableMatches';
 
-// Concept mappings for related terms
+// Expanded concept mappings for related terms
 const CONCEPT_MAPPINGS = {
-  'coding': ['development', 'programming', 'software', 'engineer', 'developer', 'coding', 'code', 'tech', 'technical'],
-  'marketing': ['growth', 'advertising', 'promotion', 'brand', 'market', 'audience', 'customers', 'acquisition'],
-  'funding': ['investment', 'capital', 'investor', 'financing', 'money', 'fundraising', 'venture', 'vc'],
-  'startup': ['venture', 'founding', 'founder', 'entrepreneurship', 'business', 'company', 'launch'],
-  'design': ['ui', 'ux', 'user interface', 'user experience', 'graphic', 'visual', 'creative'],
-  'product': ['feature', 'roadmap', 'development', 'management', 'specification', 'launch', 'mvp'],
-  'data': ['analytics', 'metrics', 'statistics', 'analysis', 'science', 'machine learning', 'ai']
+  'coding': ['development', 'programming', 'software', 'engineer', 'developer', 'coding', 'code', 'tech', 'technical', 'app', 'application', 'web', 'backend', 'frontend', 'fullstack', 'full-stack', 'develop', 'coder', 'engineering', 'programmer', 'devops', 'stack', 'debugging', 'architecture'],
+  'marketing': ['growth', 'advertising', 'promotion', 'brand', 'market', 'audience', 'customers', 'acquisition', 'seo', 'content', 'digital', 'social media', 'campaign', 'conversion', 'engagement', 'channels', 'outreach', 'influencer', 'strategy', 'visibility', 'leads', 'funnel', 'inbound', 'b2b', 'b2c', 'customer', 'client'],
+  'funding': ['investment', 'capital', 'investor', 'financing', 'money', 'fundraising', 'venture', 'vc', 'angel', 'seed', 'series', 'round', 'pitch', 'deck', 'valuation', 'term sheet', 'equity', 'dilution', 'bootstrap', 'revenue', 'raise', 'funding', 'finance', 'cash', 'budget', 'runway'],
+  'startup': ['venture', 'founding', 'founder', 'entrepreneurship', 'business', 'company', 'launch', 'scale', 'growth', 'lean', 'mvp', 'minimum viable product', 'product market fit', 'pmf', 'innovation', 'disrupt', 'accelerator', 'incubator', 'early stage', 'startup', 'start-up', 'exit', 'acquisition'],
+  'design': ['ui', 'ux', 'user interface', 'user experience', 'graphic', 'visual', 'creative', 'interface', 'prototype', 'wireframe', 'mockup', 'figma', 'sketch', 'adobe', 'photoshop', 'illustrator', 'animation', 'interaction', 'mobile', 'responsive', 'accessibility', 'a11y', 'usability'],
+  'product': ['feature', 'roadmap', 'development', 'management', 'specification', 'launch', 'mvp', 'backlog', 'sprint', 'agile', 'scrum', 'kanban', 'user story', 'epics', 'prioritization', 'product owner', 'product manager', 'requirement', 'feedback', 'iteration', 'release', 'rollout'],
+  'data': ['analytics', 'metrics', 'statistics', 'analysis', 'science', 'machine learning', 'ai', 'artificial intelligence', 'big data', 'data mining', 'data warehouse', 'database', 'sql', 'nosql', 'visualization', 'dashboard', 'tableau', 'power bi', 'predictive', 'forecasting', 'modeling', 'algorithm'],
+  'networking': ['connections', 'introductions', 'referrals', 'relationship', 'meetup', 'network', 'connect', 'contact', 'community', 'ecosystem', 'industry', 'professional', 'linkedin', 'social'],
+  'business development': ['partnership', 'alliance', 'collaboration', 'agreement', 'contract', 'channel', 'sales', 'revenue', 'client', 'customer', 'bizdev', 'deal', 'pipeline', 'leads', 'prospect', 'opportunity', 'market expansion', 'business model'],
+  'mentorship': ['advice', 'guidance', 'coaching', 'mentor', 'mentee', 'experience', 'knowledge', 'wisdom', 'career', 'growth', 'learning', 'development', 'sounding board', 'advocate', 'sponsor', 'advisor']
 };
 
 // Function to calculate semantic similarity between texts
 const getSemanticSimilarity = (text1, text2) => {
   if (!text1 || !text2) return 0;
   
-  // Parse texts with compromise
-  const doc1 = nlp(text1);
-  const doc2 = nlp(text2);
-  
-  // Extract normalized nouns, verbs, and adjectives
-  const terms1 = new Set([
-    ...doc1.nouns().out('array'),
-    ...doc1.verbs().out('array'),
-    ...doc1.adjectives().out('array')
-  ]);
-  
-  const terms2 = new Set([
-    ...doc2.nouns().out('array'),
-    ...doc2.verbs().out('array'),
-    ...doc2.adjectives().out('array')
-  ]);
+  try {
+    // Parse texts with compromise
+    const doc1 = nlp(text1);
+    const doc2 = nlp(text2);
+    
+    // Extract normalized nouns, verbs, and adjectives
+    const terms1 = new Set([
+      ...doc1.nouns().out('array'),
+      ...doc1.verbs().out('array'),
+      ...doc1.adjectives().out('array')
+    ]);
+    
+    const terms2 = new Set([
+      ...doc2.nouns().out('array'),
+      ...doc2.verbs().out('array'),
+      ...doc2.adjectives().out('array')
+    ]);
 
-  // Calculate Jaccard similarity (intersection over union)
-  const intersection = [...terms1].filter(term => terms2.has(term));
-  const union = new Set([...terms1, ...terms2]);
-  
-  // Return similarity score between 0-1
-  return union.size === 0 ? 0 : intersection.length / union.size;
+    // Calculate Jaccard similarity (intersection over union)
+    const intersection = [...terms1].filter(term => terms2.has(term));
+    const union = new Set([...terms1, ...terms2]);
+    
+    // Return similarity score between 0-1
+    return union.size === 0 ? 0 : intersection.length / union.size;
+  } catch (err) {
+    console.error('Error calculating semantic similarity:', err);
+    return 0; // Fallback in case of errors
+  }
 };
 
 // Function to find related concepts in text
 const findRelatedConcepts = (text) => {
   if (!text) return [];
   
-  const doc = nlp(text.toLowerCase());
-  const conceptMatches = [];
-  
-  Object.entries(CONCEPT_MAPPINGS).forEach(([concept, relatedTerms]) => {
-    for (const term of relatedTerms) {
-      if (doc.has(term)) {
-        conceptMatches.push(concept);
-        break; // Once we match one term in a concept, move to next concept
+  try {
+    const lowerText = text.toLowerCase();
+    const conceptMatches = [];
+    
+    Object.entries(CONCEPT_MAPPINGS).forEach(([concept, relatedTerms]) => {
+      for (const term of relatedTerms) {
+        if (lowerText.includes(term)) {
+          conceptMatches.push(concept);
+          break; // Once we match one term in a concept, move to next concept
+        }
       }
-    }
-  });
-  
-  return [...new Set(conceptMatches)]; // Remove duplicates
+    });
+    
+    return [...new Set(conceptMatches)]; // Remove duplicates
+  } catch (err) {
+    console.error('Error finding related concepts:', err);
+    return []; // Fallback in case of errors
+  }
 };
 
 // Your Google Apps Script Web App URL
@@ -547,13 +560,13 @@ const NetworkingMatcher = () => {
     };
     
     // Define match thresholds - adjusted weights for better matching
-    const CATEGORY_MATCH_WEIGHT = 8;          // Increased from 5
-    const KEYWORD_MATCH_WEIGHT = 1;           // Base weight for keyword match
-    const SPECIFIC_KEYWORD_BONUS = 0.5;       // Bonus for longer/more specific keywords
-    const SEMANTIC_MATCH_WEIGHT = 5;          // New weight for semantic matching
-    const CONCEPT_MATCH_WEIGHT = 3;           // New weight for concept matching
-    const MINIMUM_MATCH_THRESHOLD = 3;        // Minimum score to be considered a match
-    const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
+    const CATEGORY_MATCH_WEIGHT = 10;         // Increased weight for exact category match
+    const KEYWORD_MATCH_WEIGHT = 2;           // Increased base weight for keyword match
+    const SPECIFIC_KEYWORD_BONUS = 1;         // Increased bonus for longer/specific keywords
+    const SEMANTIC_MATCH_WEIGHT = 8;          // Increased weight for semantic matching
+    const CONCEPT_MATCH_WEIGHT = 5;           // Increased weight for concept matching
+    const MINIMUM_MATCH_THRESHOLD = 2;        // Lowered threshold to be more inclusive
+    const TWO_WAY_MATCH_THRESHOLD = 5;        // Threshold for two-way match
     
     // Process all potential matches
     const potentialMatches = allUsers
@@ -571,6 +584,10 @@ const NetworkingMatcher = () => {
           
           const userAskKeywords = extractKeywords(userAsk.details);
           const userAskConcepts = findRelatedConcepts(userAsk.details);
+          
+          // Debug
+          console.log(`User Ask: ${userAsk.details}`);
+          console.log(`Found concepts:`, userAskConcepts);
           
           // Check against each of their offers
           user.offers.forEach((theirOffer, theirOfferIndex) => {
@@ -616,6 +633,10 @@ const NetworkingMatcher = () => {
             // 4. NEW: Add concept matching
             const theirOfferConcepts = findRelatedConcepts(theirOffer.details);
             const matchingConcepts = userAskConcepts.filter(c => theirOfferConcepts.includes(c));
+            
+            console.log(`Their Offer: ${theirOffer.details}`);
+            console.log(`Their offer concepts:`, theirOfferConcepts);
+            console.log(`Matching concepts:`, matchingConcepts);
             
             matchingConcepts.forEach(concept => {
               matchScore += CONCEPT_MATCH_WEIGHT;
@@ -728,7 +749,7 @@ const NetworkingMatcher = () => {
         // Apply feedback adjustments
         let adjustedScore = totalMatchScore;
         if (hasPositiveFeedback) {
-          adjustedScore += 3; // Boost score for positive feedback
+          adjustedScore += 5; // Increased boost for positive feedback
         } else if (hasNegativeFeedback) {
           adjustedScore -= 5; // Significantly reduce score for negative feedback
         }
