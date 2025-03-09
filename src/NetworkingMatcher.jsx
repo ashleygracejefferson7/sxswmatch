@@ -1498,15 +1498,12 @@ const NetworkingMatcher = () => {
                           <p className="font-medium">{offerMatch.theirAskCategory}</p>
                           <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
                         </div>
-                        
                         {/* Right Panel - Your Offer */}
                         <div className="p-4">
                           <h4 className="text-sm uppercase text-gray-500 mb-2">You're Offering</h4>
                           <p className="font-medium">{offerMatch.userOfferCategory}</p>
                           <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
                         </div>
-                      </div>
-                    </div>
                   ))}
                   
                   {/* Feedback Section */}
