@@ -79,6 +79,32 @@ const findRelatedConcepts = (text) => {
   }
 };
 
+// Function to extract important industry terms
+const extractIndustryTerms = (text) => {
+  if (!text) return [];
+  
+  // List of important industry terms that should match more specifically
+  const industryTerms = [
+    'fintech', 'healthtech', 'edtech', 'medtech', 'biotech', 'proptech', 'legaltech', 
+    'cleantech', 'greentech', 'agtech', 'insurtech', 'regtech', 'foodtech', 'adtech',
+    'healthcare', 'finance', 'health', 'medical', 'education', 'real estate', 'insurance', 'retail',
+    'manufacturing', 'transportation', 'logistics', 'energy', 'sustainability',
+    'blockchain', 'crypto', 'web3', 'ai', 'machine learning', 'saas', 'enterprise',
+    'consumer', 'b2b', 'b2c', 'd2c', 'marketplace', 'platform'
+  ];
+  
+  const lowerText = text.toLowerCase();
+  const foundTerms = [];
+  
+  industryTerms.forEach(term => {
+    if (lowerText.includes(term)) {
+      foundTerms.push(term);
+    }
+  });
+  
+  return [...new Set(foundTerms)]; // Remove duplicates
+};
+
 // Your Google Apps Script Web App URL
 const API_URL = 'https://script.google.com/macros/s/AKfycbx2h4B6jNF3tQtH82Rmc-IM6vQonSw_SJc0KXjw9Tpj_YQ_rVKAT93PgBL28UMGo5Ad/exec';
 
@@ -550,7 +576,9 @@ const NetworkingMatcher = () => {
         'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some', 'such', 'no', 'nor',
         'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'looking',
         'want', 'need', 'help', 'someone', 'anyone', 'everyone', 'interested', 'able',
-        'possible', 'trying', 'going', 'based', 'make', 'makes', 'made', 'making'
+        'possible', 'trying', 'going', 'based', 'make', 'makes', 'made', 'making',
+        // Additional stopwords to reduce generic matches
+        'any', 'many', 'support', 'service', 'services', 'help', 'helping', 'work', 'working'
       ];
       
       // Extract words, convert to lowercase, remove common words and short words
@@ -559,14 +587,20 @@ const NetworkingMatcher = () => {
         .filter(word => word.length > 3 && !stopwords.includes(word));
     };
     
-    // Define match thresholds - adjusted weights for better matching
-    const CATEGORY_MATCH_WEIGHT = 10;         // Increased weight for exact category match
-    const KEYWORD_MATCH_WEIGHT = 2;           // Increased base weight for keyword match
-    const SPECIFIC_KEYWORD_BONUS = 1;         // Increased bonus for longer/specific keywords
-    const SEMANTIC_MATCH_WEIGHT = 8;          // Increased weight for semantic matching
-    const CONCEPT_MATCH_WEIGHT = 5;           // Increased weight for concept matching
-    const MINIMUM_MATCH_THRESHOLD = 2;        // Lowered threshold to be more inclusive
-    const TWO_WAY_MATCH_THRESHOLD = 5;        // Threshold for two-way match
+    // Define match thresholds - modified for better quality
+    const CATEGORY_MATCH_WEIGHT = 12;         // Primary factor - exact category match
+    const KEYWORD_MATCH_WEIGHT = 2;           // Base weight for keyword match
+    const SPECIFIC_KEYWORD_BONUS = 1;         // Bonus for longer keywords
+    const SEMANTIC_MATCH_WEIGHT = 8;          // Weight for semantic matching
+    const CONCEPT_MATCH_WEIGHT = 5;           // Weight for concept matching
+    const INDUSTRY_TERM_MATCH_WEIGHT = 10;    // High weight for matching specific industries
+    const INDUSTRY_MISMATCH_PENALTY = -8;     // Penalty for industry mismatch
+    
+    // Higher thresholds for more meaningful matches
+    const MINIMUM_MATCH_THRESHOLD = 5;        // Increased from 2 to 5
+    const GOOD_MATCH_THRESHOLD = 10;          // Threshold for "Good Match"
+    const STRONG_MATCH_THRESHOLD = 18;        // Threshold for "Strong Match"
+    const BIDIRECTIONAL_BONUS = 8;            // Bonus for matches that go both ways
     
     // Process all potential matches
     const potentialMatches = allUsers
@@ -576,6 +610,7 @@ const NetworkingMatcher = () => {
         const askMatches = [];
         const offerMatches = [];
         let totalMatchScore = 0;
+        let hasBidirectionalMatch = false;
         
         // Check each of the user's asks against the other user's offers
         currentUser.asks.forEach((userAsk, userAskIndex) => {
@@ -584,10 +619,7 @@ const NetworkingMatcher = () => {
           
           const userAskKeywords = extractKeywords(userAsk.details);
           const userAskConcepts = findRelatedConcepts(userAsk.details);
-          
-          // Debug
-          console.log(`User Ask: ${userAsk.details}`);
-          console.log(`Found concepts:`, userAskConcepts);
+          const userAskIndustryTerms = extractIndustryTerms(userAsk.details);
           
           // Check against each of their offers
           user.offers.forEach((theirOffer, theirOfferIndex) => {
@@ -597,13 +629,16 @@ const NetworkingMatcher = () => {
             let matchScore = 0;
             const matchedTerms = new Set();
             const matchedConcepts = new Set();
+            const matchedIndustryTerms = new Set();
+            const matchReasons = [];
             
             // 1. Category match (high weight)
             if (userAsk.category === theirOffer.category) {
               matchScore += CATEGORY_MATCH_WEIGHT;
+              matchReasons.push("Exact category match");
             }
             
-            // 2. Traditional keyword matches
+            // 2. Keyword matches
             const theirOfferKeywords = extractKeywords(theirOffer.details);
             
             userAskKeywords.forEach(myKeyword => {
@@ -623,25 +658,47 @@ const NetworkingMatcher = () => {
                 // Track matched keywords
                 matchedTerms.add(myKeyword);
                 matches.forEach(match => matchedTerms.add(match));
+                
+                matchReasons.push(`Keyword match: ${myKeyword}`);
               }
             });
             
-            // 3. NEW: Add semantic similarity score
+            // 3. Semantic similarity score
             const semanticScore = getSemanticSimilarity(userAsk.details, theirOffer.details);
             matchScore += semanticScore * SEMANTIC_MATCH_WEIGHT;
             
-            // 4. NEW: Add concept matching
+            if (semanticScore > 0.2) {
+              matchReasons.push(`Semantic similarity: ${(semanticScore * 100).toFixed(0)}%`);
+            }
+            
+            // 4. Concept matching
             const theirOfferConcepts = findRelatedConcepts(theirOffer.details);
             const matchingConcepts = userAskConcepts.filter(c => theirOfferConcepts.includes(c));
-            
-            console.log(`Their Offer: ${theirOffer.details}`);
-            console.log(`Their offer concepts:`, theirOfferConcepts);
-            console.log(`Matching concepts:`, matchingConcepts);
             
             matchingConcepts.forEach(concept => {
               matchScore += CONCEPT_MATCH_WEIGHT;
               matchedConcepts.add(concept);
+              matchReasons.push(`Shared concept: ${concept}`);
             });
+            
+            // 5. Industry term matching
+            const theirOfferIndustryTerms = extractIndustryTerms(theirOffer.details);
+            
+            // Check for industry term matches
+            userAskIndustryTerms.forEach(term => {
+              if (theirOfferIndustryTerms.includes(term)) {
+                matchScore += INDUSTRY_TERM_MATCH_WEIGHT;
+                matchedIndustryTerms.add(term);
+                matchReasons.push(`Industry match: ${term}`);
+              }
+            });
+            
+            // Apply penalty if industry terms don't match when both parties specify them
+            if (userAskIndustryTerms.length > 0 && theirOfferIndustryTerms.length > 0 && 
+                matchedIndustryTerms.size === 0) {
+              matchScore += INDUSTRY_MISMATCH_PENALTY;
+              matchReasons.push(`Industry mismatch: ${userAskIndustryTerms.join(', ')} vs ${theirOfferIndustryTerms.join(', ')}`);
+            }
             
             // If the match score is high enough, record this match
             if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
@@ -655,7 +712,9 @@ const NetworkingMatcher = () => {
                 matchScore,
                 matchedTerms: Array.from(matchedTerms),
                 matchedConcepts: Array.from(matchedConcepts),
-                semanticScore: semanticScore.toFixed(2)
+                matchedIndustryTerms: Array.from(matchedIndustryTerms),
+                semanticScore: semanticScore.toFixed(2),
+                matchReasons // Store reasons for debugging
               });
               
               totalMatchScore += matchScore;
@@ -670,6 +729,7 @@ const NetworkingMatcher = () => {
           
           const userOfferKeywords = extractKeywords(userOffer.details);
           const userOfferConcepts = findRelatedConcepts(userOffer.details);
+          const userOfferIndustryTerms = extractIndustryTerms(userOffer.details);
           
           // Check against each of their asks
           user.asks.forEach((theirAsk, theirAskIndex) => {
@@ -679,12 +739,14 @@ const NetworkingMatcher = () => {
             let matchScore = 0;
             const matchedTerms = new Set();
             const matchedConcepts = new Set();
+            const matchedIndustryTerms = new Set();
+            const matchReasons = [];
             
             // 1. Category match (high weight)
             if (userOffer.category === theirAsk.category) {
               matchScore += CATEGORY_MATCH_WEIGHT;
+              matchReasons.push("Exact category match");
             }
-            
             // 2. Keyword matches
             const theirAskKeywords = extractKeywords(theirAsk.details);
             
@@ -705,21 +767,47 @@ const NetworkingMatcher = () => {
                 // Track matched keywords
                 matchedTerms.add(myKeyword);
                 matches.forEach(match => matchedTerms.add(match));
+                
+                matchReasons.push(`Keyword match: ${myKeyword}`);
               }
             });
             
-            // 3. NEW: Add semantic similarity score
+            // 3. Semantic similarity score
             const semanticScore = getSemanticSimilarity(userOffer.details, theirAsk.details);
             matchScore += semanticScore * SEMANTIC_MATCH_WEIGHT;
             
-            // 4. NEW: Add concept matching
+            if (semanticScore > 0.2) {
+              matchReasons.push(`Semantic similarity: ${(semanticScore * 100).toFixed(0)}%`);
+            }
+            
+            // 4. Concept matching
             const theirAskConcepts = findRelatedConcepts(theirAsk.details);
             const matchingConcepts = userOfferConcepts.filter(c => theirAskConcepts.includes(c));
             
             matchingConcepts.forEach(concept => {
               matchScore += CONCEPT_MATCH_WEIGHT;
               matchedConcepts.add(concept);
+              matchReasons.push(`Shared concept: ${concept}`);
             });
+            
+            // 5. Industry term matching
+            const theirAskIndustryTerms = extractIndustryTerms(theirAsk.details);
+            
+            // Check for industry term matches
+            userOfferIndustryTerms.forEach(term => {
+              if (theirAskIndustryTerms.includes(term)) {
+                matchScore += INDUSTRY_TERM_MATCH_WEIGHT;
+                matchedIndustryTerms.add(term);
+                matchReasons.push(`Industry match: ${term}`);
+              }
+            });
+            
+            // Apply penalty if industry terms don't match when both parties specify them
+            if (userOfferIndustryTerms.length > 0 && theirAskIndustryTerms.length > 0 && 
+                matchedIndustryTerms.size === 0) {
+              matchScore += INDUSTRY_MISMATCH_PENALTY;
+              matchReasons.push(`Industry mismatch: ${userOfferIndustryTerms.join(', ')} vs ${theirAskIndustryTerms.join(', ')}`);
+            }
             
             // If the match score is high enough, record this match
             if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
@@ -733,13 +821,23 @@ const NetworkingMatcher = () => {
                 matchScore,
                 matchedTerms: Array.from(matchedTerms),
                 matchedConcepts: Array.from(matchedConcepts),
-                semanticScore: semanticScore.toFixed(2)
+                matchedIndustryTerms: Array.from(matchedIndustryTerms),
+                semanticScore: semanticScore.toFixed(2),
+                matchReasons // Store reasons for debugging
               });
               
               totalMatchScore += matchScore;
             }
           });
         });
+        
+        // Check for bidirectional matches
+        hasBidirectionalMatch = askMatches.length > 0 && offerMatches.length > 0;
+        
+        // Apply bonus for bidirectional matches
+        if (hasBidirectionalMatch) {
+          totalMatchScore += BIDIRECTIONAL_BONUS;
+        }
         
         // Check for user feedback on this match from Google Sheets
         const feedbackKey = `${currentUser.Email}-${user.Email}`;
@@ -749,25 +847,45 @@ const NetworkingMatcher = () => {
         // Apply feedback adjustments
         let adjustedScore = totalMatchScore;
         if (hasPositiveFeedback) {
-          adjustedScore += 5; // Increased boost for positive feedback
+          adjustedScore += 5; // Boost for positive feedback
         } else if (hasNegativeFeedback) {
-          adjustedScore -= 5; // Significantly reduce score for negative feedback
+          adjustedScore -= 10; // Increased penalty for negative feedback
+        }
+        
+        // Determine match quality based on adjusted score
+        let matchQuality = 'moderate';
+        if (adjustedScore >= STRONG_MATCH_THRESHOLD || (hasBidirectionalMatch && adjustedScore >= GOOD_MATCH_THRESHOLD)) {
+          matchQuality = 'strong';
+        } else if (adjustedScore >= GOOD_MATCH_THRESHOLD) {
+          matchQuality = 'good';
         }
         
         // Return match information
         return {
           ...user,
           matchScore: adjustedScore,
-          matchQuality: adjustedScore >= TWO_WAY_MATCH_THRESHOLD ? 'strong' : 'moderate',
+          matchQuality,
           askMatches,
           offerMatches,
+          hasBidirectionalMatch,
           hasFeedback: hasPositiveFeedback || hasNegativeFeedback
         };
       })
-      // Filter out entries with no matches
-      .filter(match => (match.askMatches.length > 0 || match.offerMatches.length > 0 || match.hasFeedback))
-      // Sort by score (highest first)
-      .sort((a, b) => b.matchScore - a.matchScore);
+      // Filter out entries with low match scores
+      .filter(match => (
+        match.matchQuality !== 'moderate' || 
+        match.hasFeedback || 
+        (match.askMatches.length > 0 && match.offerMatches.length > 0)
+      ))
+      // Sort by score (highest first) and then by bidirectional status
+      .sort((a, b) => {
+        // First sort by match score
+        if (b.matchScore !== a.matchScore) {
+          return b.matchScore - a.matchScore;
+        }
+        // If scores are equal, prioritize bidirectional matches
+        return b.hasBidirectionalMatch - a.hasBidirectionalMatch;
+      });
     
     setMatches(potentialMatches);
     return potentialMatches;
@@ -831,8 +949,10 @@ const NetworkingMatcher = () => {
   const getMatchQualityText = (match) => {
     if (match.matchQuality === 'strong') {
       return "Strong Match";
-    } else {
+    } else if (match.matchQuality === 'good') {
       return "Good Match";
+    } else {
+      return "Moderate Match";
     }
   };
 
@@ -840,8 +960,10 @@ const NetworkingMatcher = () => {
   const getMatchQualityColor = (match) => {
     if (match.matchQuality === 'strong') {
       return "bg-indigo-600";
-    } else {
+    } else if (match.matchQuality === 'good') {
       return "bg-blue-600";
+    } else {
+      return "bg-gray-500";
     }
   };
   
@@ -1225,6 +1347,14 @@ const NetworkingMatcher = () => {
                               <span className="text-green-700">{askMatch.matchedConcepts.join(', ')}</span>
                             </div>
                           )}
+                          
+                          {/* Display matched industry terms if available */}
+                          {askMatch.matchedIndustryTerms && askMatch.matchedIndustryTerms.length > 0 && (
+                            <div className="mt-2 text-xs bg-indigo-50 p-1 rounded border border-indigo-100">
+                              <span className="font-medium text-indigo-800">Industry match:</span>{' '}
+                              <span className="text-indigo-700">{askMatch.matchedIndustryTerms.join(', ')}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1259,11 +1389,18 @@ const NetworkingMatcher = () => {
                               <span className="text-green-700">{offerMatch.matchedConcepts.join(', ')}</span>
                             </div>
                           )}
+                          
+                          {/* Display matched industry terms if available */}
+                          {offerMatch.matchedIndustryTerms && offerMatch.matchedIndustryTerms.length > 0 && (
+                            <div className="mt-2 text-xs bg-indigo-50 p-1 rounded border border-indigo-100">
+                              <span className="font-medium text-indigo-800">Industry match:</span>{' '}
+                              <span className="text-indigo-700">{offerMatch.matchedIndustryTerms.join(', ')}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
-                  
                   {/* Feedback Section */}
                   <div className="px-4 py-3 bg-gray-50 border-t flex items-center justify-between">
                     <span className="text-xs text-gray-500">Rate this match (improves recommendations only):</span>
