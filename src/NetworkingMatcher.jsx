@@ -4,6 +4,7 @@ import { useReactToPrint } from 'react-to-print';
 // Your Google Apps Script Web App URL
 const API_URL = 'https://script.google.com/macros/s/AKfycbxkwHS6EKNaWN1u03d2hvSlyrbHH_YDa5yr9xiQgU7Ed_B3ja8Y1S9YSNtPBNHFvpFH/exec';
 
+// RetentionMessage component
 const RetentionMessage = () => (
   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-300 rounded">
     <p className="text-sm text-yellow-800">
@@ -13,6 +14,7 @@ const RetentionMessage = () => (
   </div>
 );
 
+// AskSection component
 const AskSection = ({ index, data, onChange, onRemove, categories, isRequired }) => {
   return (
     <div className={`${index > 0 ? 'mt-5' : ''} ${index < 2 ? 'pb-5 border-b' : ''}`}>
@@ -65,6 +67,7 @@ const AskSection = ({ index, data, onChange, onRemove, categories, isRequired })
   );
 };
 
+// OfferSection component
 const OfferSection = ({ index, data, onChange, onRemove, categories, isRequired }) => {
   return (
     <div className={`${index > 0 ? 'mt-5' : ''} ${index < 2 ? 'pb-5 border-b' : ''}`}>
@@ -117,7 +120,7 @@ const OfferSection = ({ index, data, onChange, onRemove, categories, isRequired 
   );
 };
 
-// New component for editing submissions
+// EditSubmissionForm component
 const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     name: userSubmission.Name || '',
@@ -138,7 +141,7 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     }
   }, []);
 
-  // Handle form changes
+  // Form event handlers
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -146,7 +149,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     });
   };
 
-  // Handle ask update
   const handleAskChange = (index, updatedAsk) => {
     const newAsks = [...formData.asks];
     newAsks[index] = updatedAsk;
@@ -156,7 +158,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     });
   };
 
-  // Handle offer update
   const handleOfferChange = (index, updatedOffer) => {
     const newOffers = [...formData.offers];
     newOffers[index] = updatedOffer;
@@ -166,7 +167,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     });
   };
 
-  // Add a new ask
   const addAsk = () => {
     if (formData.asks.length < 3) {
       setFormData({
@@ -176,7 +176,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     }
   };
 
-  // Add a new offer
   const addOffer = () => {
     if (formData.offers.length < 3) {
       setFormData({
@@ -186,7 +185,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     }
   };
 
-  // Remove an ask
   const removeAsk = (index) => {
     const newAsks = formData.asks.filter((_, i) => i !== index);
     setFormData({
@@ -195,7 +193,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     });
   };
 
-  // Remove an offer
   const removeOffer = (index) => {
     const newOffers = formData.offers.filter((_, i) => i !== index);
     setFormData({
@@ -204,7 +201,6 @@ const EditSubmissionForm = ({ userSubmission, categories, onSubmit, onCancel }) 
     });
   };
 
-  // Handle form submission
   const handleSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
@@ -461,6 +457,7 @@ const PrintableMatches = React.forwardRef(({ userInfo, matches }, ref) => {
   );
 });
 
+// Main NetworkingMatcher component
 const NetworkingMatcher = () => {
   // Custom event theme colors
   const theme = {
@@ -529,17 +526,14 @@ const NetworkingMatcher = () => {
     "Other"
   ];
 
+  // State variables
   const [userSubmissionInfo, setUserSubmissionInfo] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     linkedin: '',
-    asks: [
-      { category: '', details: '' }
-    ],
-    offers: [
-      { category: '', details: '' }
-    ]
+    asks: [{ category: '', details: '' }],
+    offers: [{ category: '', details: '' }]
   });
   const [submissions, setSubmissions] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -591,7 +585,7 @@ const NetworkingMatcher = () => {
     fetchData();
   }, []);
   
-  // Handle basic form input changes
+  // Form event handlers
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -599,7 +593,6 @@ const NetworkingMatcher = () => {
     });
   };
 
-  // Handle ask update
   const handleAskChange = (index, updatedAsk) => {
     const newAsks = [...formData.asks];
     newAsks[index] = updatedAsk;
@@ -609,7 +602,6 @@ const NetworkingMatcher = () => {
     });
   };
 
-  // Handle offer update
   const handleOfferChange = (index, updatedOffer) => {
     const newOffers = [...formData.offers];
     newOffers[index] = updatedOffer;
@@ -619,7 +611,6 @@ const NetworkingMatcher = () => {
     });
   };
 
-  // Add a new ask
   const addAsk = () => {
     if (formData.asks.length < 3) {
       setFormData({
@@ -629,7 +620,6 @@ const NetworkingMatcher = () => {
     }
   };
 
-  // Add a new offer
   const addOffer = () => {
     if (formData.offers.length < 3) {
       setFormData({
@@ -639,7 +629,6 @@ const NetworkingMatcher = () => {
     }
   };
 
-  // Remove an ask
   const removeAsk = (index) => {
     const newAsks = formData.asks.filter((_, i) => i !== index);
     setFormData({
@@ -648,7 +637,6 @@ const NetworkingMatcher = () => {
     });
   };
 
-  // Remove an offer
   const removeOffer = (index) => {
     const newOffers = formData.offers.filter((_, i) => i !== index);
     setFormData({
@@ -718,6 +706,7 @@ const NetworkingMatcher = () => {
     }
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -821,7 +810,6 @@ const NetworkingMatcher = () => {
       });
       
       const result = await response.json();
-const result = await response.json();
       
       if (result.success) {
         // Update submission in local state
@@ -879,6 +867,7 @@ const result = await response.json();
     }
   };
 
+  // Match finding algorithm
   const findMatches = (currentUser, allUsers) => {
     // Enhanced keyword extraction with better stopwords list
     const extractKeywords = (text) => {
@@ -1074,6 +1063,7 @@ const result = await response.json();
     return potentialMatches;
   };
 
+  // Check matches for an email
   const checkMatches = async () => {
     if (!formData.email) {
       alert("Please enter your email address to check matches");
@@ -1335,7 +1325,8 @@ const result = await response.json();
           </form>
         </>
       )}
-{view === 'thanks' && (
+      
+      {view === 'thanks' && (
         <div className="text-center py-10">
           <h1 className="text-2xl font-bold mb-4">Thank you for submitting!</h1>
           <p className="mb-6">Your information has been recorded.</p>
@@ -1474,8 +1465,6 @@ const result = await response.json();
                         {/* Right Panel - Their Offer */}
                         <div className="p-4">
                           <h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
-                          <p className="font-medium">{askMatch.theirOffer
-<h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
                           <p className="font-medium">{askMatch.theirOfferCategory}</p>
                           <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
                         </div>
@@ -1494,6 +1483,8 @@ const result = await response.json();
                       <div className="grid grid-cols-2 divide-x">
                         {/* Left Panel - Their Ask */}
                         <div className="p-4">
+                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For
+                            <div className="p-4">
                           <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
                           <p className="font-medium">{offerMatch.theirAskCategory}</p>
                           <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
