@@ -16,7 +16,6 @@ const CONCEPT_MAPPINGS = {
   'design': ['ui', 'ux', 'user interface', 'user experience', 'graphic', 'visual', 'creative'],
   'product': ['feature', 'roadmap', 'development', 'management', 'specification', 'launch', 'mvp'],
   'data': ['analytics', 'metrics', 'statistics', 'analysis', 'science', 'machine learning', 'ai']
-  // Add more concepts relevant to your event
 };
 
 // Function to calculate semantic similarity between texts
@@ -772,6 +771,76 @@ const NetworkingMatcher = () => {
         setFeedbackData(data.feedback);
       }
       
+      // Find the most recent submission for this email
+      const userSubmission = findLatestSubmissionByEmail(formData.email);
+      
+      if (userSubmission) {
+        // Store the user's submission info
+        setUserSubmissionInfo({
+          name: userSubmission.Name,
+          email: userSubmission.Email,
+          linkedin: userSubmission.LinkedIn,
+          asks: userSubmission.asks || [],
+          offers: userSubmission.offers || []
+        });
+        
+        // Find actual matches
+        const actualMatches = findMatches(userSubmission, data.records || data);
+        setMatches(actualMatches);
+        
+        setView('matches');
+      } else {
+        alert("Email not found. Please submit the form first.");
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error checking matches:', err);
+      setError("Error connecting to the server. Please try again later.");
+      setLoading(false);
+    }
+  };
+
+  // Calculate if this is a multi-directional match
+  const isMultiDirectionalMatch = (match) => {
+    return match.askMatches.length > 0 && match.offerMatches.length > 0;
+  };
+
+  // Get the appropriate match quality text
+  const getMatchQualityText = (match) => {
+    if (match.matchQuality === 'strong') {
+      return "Strong Match";
+    } else {
+      return "Good Match";
+    }
+  };
+
+  // Get the appropriate match quality color
+  const getMatchQualityColor = (match) => {
+    if (match.matchQuality === 'strong') {
+      return "bg-indigo-600";
+    } else {
+      return "bg-blue-600";
+    }
+  };
+  
+  // Function to refresh matches after editing or updating
+  const refreshMatches = async () => {
+    if (!userSubmissionInfo || !userSubmissionInfo.email) return;
+    
+    try {
+      setLoading(true);
+      
+      // Refresh data to get latest matches
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      
+      // Set submissions and feedback from the response
+      setSubmissions(data.records || data);
+      if (data.feedback) {
+        setFeedbackData(data.feedback);
+      }
+      
       // Find the most recent submission
       const userSubmission = findLatestSubmissionByEmail(userSubmissionInfo.email);
       
@@ -1220,74 +1289,4 @@ const NetworkingMatcher = () => {
   );
 };
 
-export default NetworkingMatcher; data);
-      if (data.feedback) {
-        setFeedbackData(data.feedback);
-      }
-      
-      // Find the most recent submission for this email
-      const userSubmission = findLatestSubmissionByEmail(formData.email);
-      
-      if (userSubmission) {
-        // Store the user's submission info
-        setUserSubmissionInfo({
-          name: userSubmission.Name,
-          email: userSubmission.Email,
-          linkedin: userSubmission.LinkedIn,
-          asks: userSubmission.asks || [],
-          offers: userSubmission.offers || []
-        });
-        
-        // Find actual matches
-        const actualMatches = findMatches(userSubmission, data.records || data);
-        setMatches(actualMatches);
-        
-        setView('matches');
-      } else {
-        alert("Email not found. Please submit the form first.");
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Error checking matches:', err);
-      setError("Error connecting to the server. Please try again later.");
-      setLoading(false);
-    }
-  };
-
-  // Calculate if this is a multi-directional match
-  const isMultiDirectionalMatch = (match) => {
-    return match.askMatches.length > 0 && match.offerMatches.length > 0;
-  };
-
-  // Get the appropriate match quality text
-  const getMatchQualityText = (match) => {
-    if (match.matchQuality === 'strong') {
-      return "Strong Match";
-    } else {
-      return "Good Match";
-    }
-  };
-
-  // Get the appropriate match quality color
-  const getMatchQualityColor = (match) => {
-    if (match.matchQuality === 'strong') {
-      return "bg-indigo-600";
-    } else {
-      return "bg-blue-600";
-    }
-  };
-  
-  // Function to refresh matches after editing or updating
-  const refreshMatches = async () => {
-    if (!userSubmissionInfo || !userSubmissionInfo.email) return;
-    
-    try {
-      setLoading(true);
-      
-      // Refresh data to get latest matches
-      const response = await fetch(API_URL);
-      const data = await response.json();
-      
-      // Set submissions and feedback from the response
-      setSubmissions(data.records ||
+export default NetworkingMatcher;
