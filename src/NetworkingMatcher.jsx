@@ -1490,12 +1490,11 @@ const NetworkingMatcher = () => {
                         </div>
                       )}
                       <div className="grid grid-cols-2 divide-x">
-                        {/* Left Panel - Their Ask */}
-                        <div className="p-4">
-                          <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
-                          <p className="font-medium">{offerMatch.theirAskCategory}
-                            <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
-                         <p className="font-medium">{offerMatch.theirAskCategory}</p>
+                    
+           {/* Left Panel - Their Ask */}
+<div className="p-4">
+  <h4 className="text-sm uppercase text-gray-500 mb-2">They're Looking For</h4>
+  <p className="font-medium">{offerMatch.theirAskCategory}</p>
   <p className="text-sm mt-1">{offerMatch.theirAskDetails}</p>
 </div>
                         {/* Right Panel - Your Offer */}
