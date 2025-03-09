@@ -7,7 +7,7 @@ import EditSubmissionForm from './EditSubmissionForm';
 import PrintableMatches from './PrintableMatches';
 
 // Your Google Apps Script Web App URL
-const API_URL = 'https://script.google.com/macros/s/AKfycbx2h4B6jNF3tQtH82Rmc-IM6vQonSw_SJc0KXjw9Tpj_YQ_rVKAT93PgBL28UMGo5Ad/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwVgYOsUn95_vumksCqRjL9z4ayzOMRp7tHFeVZsCYMwY8zL1XQLFCTw8L5IA2V0k42/exec';
 
 const NetworkingMatcher = () => {
   // Custom event theme colors
@@ -139,6 +139,30 @@ const NetworkingMatcher = () => {
     fetchData();
   }, []);
   
+  // Find the most recent submission for an email
+  const findLatestSubmissionByEmail = (email) => {
+    if (!email || !submissions.length) return null;
+    
+    // Filter submissions by email
+    const userSubmissions = submissions.filter(
+      sub => sub.Email.toLowerCase() === email.toLowerCase()
+    );
+    
+    if (!userSubmissions.length) return null;
+    
+    // If multiple submissions exist, sort by timestamp and return the latest
+    if (userSubmissions.length > 1) {
+      // Sort by timestamp (newest first)
+      return userSubmissions.sort((a, b) => {
+        const dateA = new Date(a.Timestamp);
+        const dateB = new Date(b.Timestamp);
+        return dateB - dateA;
+      })[0];
+    }
+    
+    return userSubmissions[0];
+  };
+  
   // Handle basic form input changes
   const handleChange = (e) => {
     setFormData({
@@ -246,9 +270,7 @@ const NetworkingMatcher = () => {
         
         // Refresh matches if in matches view
         if (view === 'matches') {
-          const userSubmission = submissions.find(
-            sub => sub.Email.toLowerCase() === currentUserEmail.toLowerCase()
-          );
+          const userSubmission = findLatestSubmissionByEmail(currentUserEmail);
           
           if (userSubmission) {
             findMatches(userSubmission, submissions);
@@ -305,7 +327,21 @@ const NetworkingMatcher = () => {
           Timestamp: new Date().toString()
         };
         
-        const newSubmissions = [...submissions, newSubmission];
+        // Update submissions list - if email already exists, replace the entry
+        const existingSubmissionIndex = submissions.findIndex(
+          sub => sub.Email.toLowerCase() === formData.email.toLowerCase()
+        );
+        
+        let newSubmissions;
+        if (existingSubmissionIndex !== -1) {
+          // Replace existing submission
+          newSubmissions = [...submissions];
+          newSubmissions[existingSubmissionIndex] = newSubmission;
+        } else {
+          // Add new submission
+          newSubmissions = [...submissions, newSubmission];
+        }
+        
         setSubmissions(newSubmissions);
         
         // Store user's submission info
@@ -355,17 +391,16 @@ const NetworkingMatcher = () => {
         return;
       }
       
+      // Ensure action parameter is included
+      const submissionData = {
+        ...updatedData,
+        action: 'update'
+      };
+      
       // Send data to Google Sheets
       const response = await fetch(API_URL, {
         method: 'POST',
-        body: JSON.stringify({
-          action: 'update',
-          name: updatedData.name,
-          email: updatedData.email,
-          linkedin: updatedData.linkedin,
-          asks: updatedData.asks,
-          offers: updatedData.offers
-        })
+        body: JSON.stringify(submissionData)
       });
       
       const result = await response.json();
@@ -640,16 +675,15 @@ const NetworkingMatcher = () => {
         setFeedbackData(data.feedback);
       }
       
-      // Find matches for the email entered
-      const userSubmission = (data.records || data).find(
-        sub => sub.Email.toLowerCase() === formData.email.toLowerCase()
-      );
+      // Find the most recent submission for this email
+      const userSubmission = findLatestSubmissionByEmail(formData.email);
       
       if (userSubmission) {
         // Store the user's submission info
         setUserSubmissionInfo({
           name: userSubmission.Name,
           email: userSubmission.Email,
+          linkedin: userSubmission.LinkedIn,
           asks: userSubmission.asks || [],
           offers: userSubmission.offers || []
         });
@@ -691,6 +725,48 @@ const NetworkingMatcher = () => {
       return "bg-indigo-600";
     } else {
       return "bg-blue-600";
+    }
+  };
+  
+  // Function to refresh matches after editing or updating
+  const refreshMatches = async () => {
+    if (!userSubmissionInfo || !userSubmissionInfo.email) return;
+    
+    try {
+      setLoading(true);
+      
+      // Refresh data to get latest matches
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      
+      // Set submissions and feedback from the response
+      setSubmissions(data.records || data);
+      if (data.feedback) {
+        setFeedbackData(data.feedback);
+      }
+      
+      // Find the most recent submission
+      const userSubmission = findLatestSubmissionByEmail(userSubmissionInfo.email);
+      
+      if (userSubmission) {
+        // Update user's submission info if needed
+        setUserSubmissionInfo({
+          name: userSubmission.Name,
+          email: userSubmission.Email,
+          linkedin: userSubmission.LinkedIn,
+          asks: userSubmission.asks || [],
+          offers: userSubmission.offers || []
+        });
+        
+        // Find updated matches
+        findMatches(userSubmission, data.records || data);
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error refreshing matches:', err);
+      setError("Error connecting to the server. Please try again later.");
+      setLoading(false);
     }
   };
 
@@ -913,7 +989,7 @@ const NetworkingMatcher = () => {
       
       {view === 'edit' && userSubmissionInfo && (
         <EditSubmissionForm 
-          userSubmission={submissions.find(sub => sub.Email.toLowerCase() === userSubmissionInfo.email.toLowerCase())}
+          userSubmission={findLatestSubmissionByEmail(userSubmissionInfo.email)}
           categories={categories}
           onSubmit={handleUpdateSubmission}
           onCancel={() => setView('matches')}
@@ -1078,13 +1154,23 @@ const NetworkingMatcher = () => {
             </div>
           )}
           
-          <button
-            onClick={() => setView('form')}
-            className="mt-6 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
-            style={{backgroundColor: theme.primary}}
-          >
-            Return to Form
-          </button>
+          <div className="mt-6 flex space-x-4">
+            <button
+              onClick={() => setView('form')}
+              className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
+              style={{backgroundColor: theme.primary}}
+            >
+              Return to Form
+            </button>
+            
+            <button
+              onClick={refreshMatches}
+              className="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white"
+              style={{backgroundColor: theme.secondary}}
+            >
+              Refresh Matches
+            </button>
+          </div>
         </div>
       )}
     </div>
