@@ -1220,7 +1220,12 @@ const NetworkingMatcher = () => {
   );
 };
 
-export default NetworkingMatcher; for this email
+export default NetworkingMatcher; data);
+      if (data.feedback) {
+        setFeedbackData(data.feedback);
+      }
+      
+      // Find the most recent submission for this email
       const userSubmission = findLatestSubmissionByEmail(formData.email);
       
       if (userSubmission) {
@@ -1285,9 +1290,4 @@ export default NetworkingMatcher; for this email
       const data = await response.json();
       
       // Set submissions and feedback from the response
-      setSubmissions(data.records || data);
-      if (data.feedback) {
-        setFeedbackData(data.feedback);
-      }
-      
-      // Find the most recent submission
+      setSubmissions(data.records ||
