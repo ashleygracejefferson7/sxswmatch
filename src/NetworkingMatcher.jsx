@@ -1,13 +1,74 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
+import nlp from 'compromise';
 import AskSection from './AskSection';
 import OfferSection from './OfferSection';
 import RetentionMessage from './RetentionMessage';
 import EditSubmissionForm from './EditSubmissionForm';
 import PrintableMatches from './PrintableMatches';
 
+// Concept mappings for related terms
+const CONCEPT_MAPPINGS = {
+  'coding': ['development', 'programming', 'software', 'engineer', 'developer', 'coding', 'code', 'tech', 'technical'],
+  'marketing': ['growth', 'advertising', 'promotion', 'brand', 'market', 'audience', 'customers', 'acquisition'],
+  'funding': ['investment', 'capital', 'investor', 'financing', 'money', 'fundraising', 'venture', 'vc'],
+  'startup': ['venture', 'founding', 'founder', 'entrepreneurship', 'business', 'company', 'launch'],
+  'design': ['ui', 'ux', 'user interface', 'user experience', 'graphic', 'visual', 'creative'],
+  'product': ['feature', 'roadmap', 'development', 'management', 'specification', 'launch', 'mvp'],
+  'data': ['analytics', 'metrics', 'statistics', 'analysis', 'science', 'machine learning', 'ai']
+  // Add more concepts relevant to your event
+};
+
+// Function to calculate semantic similarity between texts
+const getSemanticSimilarity = (text1, text2) => {
+  if (!text1 || !text2) return 0;
+  
+  // Parse texts with compromise
+  const doc1 = nlp(text1);
+  const doc2 = nlp(text2);
+  
+  // Extract normalized nouns, verbs, and adjectives
+  const terms1 = new Set([
+    ...doc1.nouns().out('array'),
+    ...doc1.verbs().out('array'),
+    ...doc1.adjectives().out('array')
+  ]);
+  
+  const terms2 = new Set([
+    ...doc2.nouns().out('array'),
+    ...doc2.verbs().out('array'),
+    ...doc2.adjectives().out('array')
+  ]);
+
+  // Calculate Jaccard similarity (intersection over union)
+  const intersection = [...terms1].filter(term => terms2.has(term));
+  const union = new Set([...terms1, ...terms2]);
+  
+  // Return similarity score between 0-1
+  return union.size === 0 ? 0 : intersection.length / union.size;
+};
+
+// Function to find related concepts in text
+const findRelatedConcepts = (text) => {
+  if (!text) return [];
+  
+  const doc = nlp(text.toLowerCase());
+  const conceptMatches = [];
+  
+  Object.entries(CONCEPT_MAPPINGS).forEach(([concept, relatedTerms]) => {
+    for (const term of relatedTerms) {
+      if (doc.has(term)) {
+        conceptMatches.push(concept);
+        break; // Once we match one term in a concept, move to next concept
+      }
+    }
+  });
+  
+  return [...new Set(conceptMatches)]; // Remove duplicates
+};
+
 // Your Google Apps Script Web App URL
-const API_URL = 'https://script.google.com/macros/s/AKfycbwVgYOsUn95_vumksCqRjL9z4ayzOMRp7tHFeVZsCYMwY8zL1XQLFCTw8L5IA2V0k42/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx2h4B6jNF3tQtH82Rmc-IM6vQonSw_SJc0KXjw9Tpj_YQ_rVKAT93PgBL28UMGo5Ad/exec';
 
 const NetworkingMatcher = () => {
   // Custom event theme colors
@@ -486,10 +547,12 @@ const NetworkingMatcher = () => {
         .filter(word => word.length > 3 && !stopwords.includes(word));
     };
     
-    // Define match thresholds - these can be adjusted based on testing
-    const CATEGORY_MATCH_WEIGHT = 5;          // Weight for exact category match
+    // Define match thresholds - adjusted weights for better matching
+    const CATEGORY_MATCH_WEIGHT = 8;          // Increased from 5
     const KEYWORD_MATCH_WEIGHT = 1;           // Base weight for keyword match
     const SPECIFIC_KEYWORD_BONUS = 0.5;       // Bonus for longer/more specific keywords
+    const SEMANTIC_MATCH_WEIGHT = 5;          // New weight for semantic matching
+    const CONCEPT_MATCH_WEIGHT = 3;           // New weight for concept matching
     const MINIMUM_MATCH_THRESHOLD = 3;        // Minimum score to be considered a match
     const TWO_WAY_MATCH_THRESHOLD = 6;        // Threshold for two-way match
     
@@ -508,6 +571,7 @@ const NetworkingMatcher = () => {
           if (!userAsk || !userAsk.category || !userAsk.details) return;
           
           const userAskKeywords = extractKeywords(userAsk.details);
+          const userAskConcepts = findRelatedConcepts(userAsk.details);
           
           // Check against each of their offers
           user.offers.forEach((theirOffer, theirOfferIndex) => {
@@ -516,13 +580,14 @@ const NetworkingMatcher = () => {
             
             let matchScore = 0;
             const matchedTerms = new Set();
+            const matchedConcepts = new Set();
             
-            // Category match (high weight)
+            // 1. Category match (high weight)
             if (userAsk.category === theirOffer.category) {
               matchScore += CATEGORY_MATCH_WEIGHT;
             }
             
-            // Keyword matches
+            // 2. Traditional keyword matches
             const theirOfferKeywords = extractKeywords(theirOffer.details);
             
             userAskKeywords.forEach(myKeyword => {
@@ -545,6 +610,19 @@ const NetworkingMatcher = () => {
               }
             });
             
+            // 3. NEW: Add semantic similarity score
+            const semanticScore = getSemanticSimilarity(userAsk.details, theirOffer.details);
+            matchScore += semanticScore * SEMANTIC_MATCH_WEIGHT;
+            
+            // 4. NEW: Add concept matching
+            const theirOfferConcepts = findRelatedConcepts(theirOffer.details);
+            const matchingConcepts = userAskConcepts.filter(c => theirOfferConcepts.includes(c));
+            
+            matchingConcepts.forEach(concept => {
+              matchScore += CONCEPT_MATCH_WEIGHT;
+              matchedConcepts.add(concept);
+            });
+            
             // If the match score is high enough, record this match
             if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
               askMatches.push({
@@ -555,7 +633,9 @@ const NetworkingMatcher = () => {
                 theirOfferCategory: theirOffer.category,
                 theirOfferDetails: theirOffer.details,
                 matchScore,
-                matchedTerms: Array.from(matchedTerms)
+                matchedTerms: Array.from(matchedTerms),
+                matchedConcepts: Array.from(matchedConcepts),
+                semanticScore: semanticScore.toFixed(2)
               });
               
               totalMatchScore += matchScore;
@@ -569,6 +649,7 @@ const NetworkingMatcher = () => {
           if (!userOffer || !userOffer.category || !userOffer.details) return;
           
           const userOfferKeywords = extractKeywords(userOffer.details);
+          const userOfferConcepts = findRelatedConcepts(userOffer.details);
           
           // Check against each of their asks
           user.asks.forEach((theirAsk, theirAskIndex) => {
@@ -577,13 +658,14 @@ const NetworkingMatcher = () => {
             
             let matchScore = 0;
             const matchedTerms = new Set();
+            const matchedConcepts = new Set();
             
-            // Category match (high weight)
+            // 1. Category match (high weight)
             if (userOffer.category === theirAsk.category) {
               matchScore += CATEGORY_MATCH_WEIGHT;
             }
             
-            // Keyword matches
+            // 2. Keyword matches
             const theirAskKeywords = extractKeywords(theirAsk.details);
             
             userOfferKeywords.forEach(myKeyword => {
@@ -606,6 +688,19 @@ const NetworkingMatcher = () => {
               }
             });
             
+            // 3. NEW: Add semantic similarity score
+            const semanticScore = getSemanticSimilarity(userOffer.details, theirAsk.details);
+            matchScore += semanticScore * SEMANTIC_MATCH_WEIGHT;
+            
+            // 4. NEW: Add concept matching
+            const theirAskConcepts = findRelatedConcepts(theirAsk.details);
+            const matchingConcepts = userOfferConcepts.filter(c => theirAskConcepts.includes(c));
+            
+            matchingConcepts.forEach(concept => {
+              matchScore += CONCEPT_MATCH_WEIGHT;
+              matchedConcepts.add(concept);
+            });
+            
             // If the match score is high enough, record this match
             if (matchScore >= MINIMUM_MATCH_THRESHOLD) {
               offerMatches.push({
@@ -616,7 +711,9 @@ const NetworkingMatcher = () => {
                 theirAskCategory: theirAsk.category,
                 theirAskDetails: theirAsk.details,
                 matchScore,
-                matchedTerms: Array.from(matchedTerms)
+                matchedTerms: Array.from(matchedTerms),
+                matchedConcepts: Array.from(matchedConcepts),
+                semanticScore: semanticScore.toFixed(2)
               });
               
               totalMatchScore += matchScore;
@@ -661,76 +758,6 @@ const NetworkingMatcher = () => {
       alert("Please enter your email address to check matches");
       return;
     }
-    
-    try {
-      setLoading(true);
-      
-      // Refresh data to get latest matches
-      const response = await fetch(API_URL);
-      const data = await response.json();
-      
-      // Set submissions and feedback from the response
-      setSubmissions(data.records || data);
-      if (data.feedback) {
-        setFeedbackData(data.feedback);
-      }
-      
-      // Find the most recent submission for this email
-      const userSubmission = findLatestSubmissionByEmail(formData.email);
-      
-      if (userSubmission) {
-        // Store the user's submission info
-        setUserSubmissionInfo({
-          name: userSubmission.Name,
-          email: userSubmission.Email,
-          linkedin: userSubmission.LinkedIn,
-          asks: userSubmission.asks || [],
-          offers: userSubmission.offers || []
-        });
-        
-        // Find actual matches
-        const actualMatches = findMatches(userSubmission, data.records || data);
-        setMatches(actualMatches);
-        
-        setView('matches');
-      } else {
-        alert("Email not found. Please submit the form first.");
-      }
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Error checking matches:', err);
-      setError("Error connecting to the server. Please try again later.");
-      setLoading(false);
-    }
-  };
-
-  // Calculate if this is a multi-directional match
-  const isMultiDirectionalMatch = (match) => {
-    return match.askMatches.length > 0 && match.offerMatches.length > 0;
-  };
-
-  // Get the appropriate match quality text
-  const getMatchQualityText = (match) => {
-    if (match.matchQuality === 'strong') {
-      return "Strong Match";
-    } else {
-      return "Good Match";
-    }
-  };
-
-  // Get the appropriate match quality color
-  const getMatchQualityColor = (match) => {
-    if (match.matchQuality === 'strong') {
-      return "bg-indigo-600";
-    } else {
-      return "bg-blue-600";
-    }
-  };
-  
-  // Function to refresh matches after editing or updating
-  const refreshMatches = async () => {
-    if (!userSubmissionInfo || !userSubmissionInfo.email) return;
     
     try {
       setLoading(true);
@@ -1100,6 +1127,14 @@ const NetworkingMatcher = () => {
                           <h4 className="text-sm uppercase text-gray-500 mb-2">They're Offering</h4>
                           <p className="font-medium">{askMatch.theirOfferCategory}</p>
                           <p className="text-sm mt-1">{askMatch.theirOfferDetails}</p>
+                          
+                          {/* Display matched concepts if available */}
+                          {askMatch.matchedConcepts && askMatch.matchedConcepts.length > 0 && (
+                            <div className="mt-2 text-xs bg-green-50 p-1 rounded border border-green-100">
+                              <span className="font-medium text-green-800">Matched topics:</span>{' '}
+                              <span className="text-green-700">{askMatch.matchedConcepts.join(', ')}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1126,6 +1161,14 @@ const NetworkingMatcher = () => {
                           <h4 className="text-sm uppercase text-gray-500 mb-2">You're Offering</h4>
                           <p className="font-medium">{offerMatch.userOfferCategory}</p>
                           <p className="text-sm mt-1">{offerMatch.userOfferDetails}</p>
+                          
+                          {/* Display matched concepts if available */}
+                          {offerMatch.matchedConcepts && offerMatch.matchedConcepts.length > 0 && (
+                            <div className="mt-2 text-xs bg-green-50 p-1 rounded border border-green-100">
+                              <span className="font-medium text-green-800">Matched topics:</span>{' '}
+                              <span className="text-green-700">{offerMatch.matchedConcepts.join(', ')}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1177,4 +1220,74 @@ const NetworkingMatcher = () => {
   );
 };
 
-export default NetworkingMatcher;
+export default NetworkingMatcher; for this email
+      const userSubmission = findLatestSubmissionByEmail(formData.email);
+      
+      if (userSubmission) {
+        // Store the user's submission info
+        setUserSubmissionInfo({
+          name: userSubmission.Name,
+          email: userSubmission.Email,
+          linkedin: userSubmission.LinkedIn,
+          asks: userSubmission.asks || [],
+          offers: userSubmission.offers || []
+        });
+        
+        // Find actual matches
+        const actualMatches = findMatches(userSubmission, data.records || data);
+        setMatches(actualMatches);
+        
+        setView('matches');
+      } else {
+        alert("Email not found. Please submit the form first.");
+      }
+      
+      setLoading(false);
+    } catch (err) {
+      console.error('Error checking matches:', err);
+      setError("Error connecting to the server. Please try again later.");
+      setLoading(false);
+    }
+  };
+
+  // Calculate if this is a multi-directional match
+  const isMultiDirectionalMatch = (match) => {
+    return match.askMatches.length > 0 && match.offerMatches.length > 0;
+  };
+
+  // Get the appropriate match quality text
+  const getMatchQualityText = (match) => {
+    if (match.matchQuality === 'strong') {
+      return "Strong Match";
+    } else {
+      return "Good Match";
+    }
+  };
+
+  // Get the appropriate match quality color
+  const getMatchQualityColor = (match) => {
+    if (match.matchQuality === 'strong') {
+      return "bg-indigo-600";
+    } else {
+      return "bg-blue-600";
+    }
+  };
+  
+  // Function to refresh matches after editing or updating
+  const refreshMatches = async () => {
+    if (!userSubmissionInfo || !userSubmissionInfo.email) return;
+    
+    try {
+      setLoading(true);
+      
+      // Refresh data to get latest matches
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      
+      // Set submissions and feedback from the response
+      setSubmissions(data.records || data);
+      if (data.feedback) {
+        setFeedbackData(data.feedback);
+      }
+      
+      // Find the most recent submission
